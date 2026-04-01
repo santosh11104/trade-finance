@@ -1,0 +1,25 @@
+# Node.js
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Fabric artifacts and local files
+wallet/
+crypto-config/
+channel-artifacts/
+chaincode-package/
+peer-artifacts/
+pgdata/
+
+# Docker Compose overrides
+docker-compose.override.yml
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store

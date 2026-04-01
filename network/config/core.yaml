@@ -1,0 +1,44 @@
+# Minimal Fabric peer configuration for network CLI operations
+peer:
+  id: peer0
+  networkId: trade-finance
+  address: 0.0.0.0:7051
+  listenAddress: 0.0.0.0:7051
+  chaincodeListenAddress: 0.0.0.0:7052
+  localMspId: Org1MSP
+  fileSystemPath: /var/hyperledger/production
+  BCCSP:
+    Default: SW
+    SW:
+      Hash: SHA2
+      Security: 256
+      FileKeyStore:
+        KeyStore: /var/hyperledger/fabric/msp/keystore
+  tls:
+    enabled: true
+    clientAuthRequired: false
+    rootcert:
+      file: /etc/hyperledger/fabric/tls/ca.crt
+  gossip:
+    useLeaderElection: true
+    orgLeader: false
+    bootstrap: peer0.org1.example.com:7051
+  authentication:
+    timeWindow: 15m
+  limits:
+    concurrency:
+      endorser: 5000
+vm:
+  endpoint: unix:///var/run/docker.sock
+logging:
+  peer:
+    level: info
+    format: json
+chaincode:
+  externalBuilders: []
+  tls:
+    enabled: false
+  golang:
+    runtime: docker
+
+# The config file is minimal and primarily enables peer CLI invocation from tools.
