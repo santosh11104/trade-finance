@@ -22,6 +22,30 @@ function run_peer() {
     hyperledger/fabric-tools:2.5 peer "$@"
 }
 
+function createChannel() {
+  local ORG_MSP=$1
+  local PEER=$2
+  local MSP_PATH=$3
+  local PORT=$4
+  local ORG_DOMAIN=$5
+
+  CORE_PEER_LOCALMSPID=${ORG_MSP}
+  CORE_PEER_MSPCONFIGPATH="network/crypto-config/${MSP_PATH}/users/Admin@${ORG_DOMAIN}/msp"
+  CORE_PEER_TLS_ROOTCERT_FILE="network/config/tls-root-cas.pem"
+  CORE_PEER_ADDRESS="${PEER}:${PORT}"
+
+  if [ -f ./channel-artifacts/${CHANNEL_NAME}.block ]; then
+    echo "Channel block already exists, skipping create"
+    return
+  fi
+
+  echo "Creating channel block with ${PEER}"
+  if ! run_peer channel create -o ${ORDERER_ADDRESS} -c ${CHANNEL_NAME} -f ${CHANNEL_TX} --outputBlock ./channel-artifacts/${CHANNEL_NAME}.block --tls --cafile /workspace/network/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem; then
+    echo "Channel already exists or create failed; fetching block instead"
+    run_peer channel fetch 0 ./channel-artifacts/${CHANNEL_NAME}.block -o ${ORDERER_ADDRESS} -c ${CHANNEL_NAME} --tls --cafile /workspace/network/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+  fi
+}
+
 function joinChannel() {
   local ORG_MSP=$1
   local PEER=$2
@@ -34,10 +58,12 @@ function joinChannel() {
   CORE_PEER_TLS_ROOTCERT_FILE="network/config/tls-root-cas.pem"
   CORE_PEER_ADDRESS="${PEER}:${PORT}"
 
-  echo "Creating or fetching channel block for ${PEER}"
-  run_peer channel create -o ${ORDERER_ADDRESS} -c ${CHANNEL_NAME} -f ${CHANNEL_TX} --outputBlock ./channel-artifacts/${CHANNEL_NAME}.block --tls --cafile /workspace/network/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem || true
+  echo "Joining ${PEER} to channel"
   run_peer channel join -b ./channel-artifacts/${CHANNEL_NAME}.block
 }
+
+echo "Creating channel with Org1 peer"
+createChannel Org1MSP peer0.org1.example.com peerOrganizations/org1.example.com 7051 org1.example.com
 
 echo "Joining Org1 peer"
 joinChannel Org1MSP peer0.org1.example.com peerOrganizations/org1.example.com 7051 org1.example.com

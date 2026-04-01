@@ -42,7 +42,14 @@ function install_chaincode() {
   CORE_PEER_TLS_ROOTCERT_FILE="/workspace/${TLS_CERT_PATH}"
 
   echo "Installing chaincode on ${PEER_HOST} (${MSP})"
-  run_peer lifecycle chaincode install ${CHAINCODE_PACKAGE}
+  output=$(run_peer lifecycle chaincode install ${CHAINCODE_PACKAGE} 2>&1) || {
+    if echo "$output" | grep -q "already successfully installed"; then
+      echo "Chaincode already installed on ${PEER_HOST}, continuing"
+      return 0
+    fi
+    echo "$output"
+    return 1
+  }
 }
 
 function approve_chaincode() {
@@ -67,8 +74,13 @@ function approve_chaincode() {
     --sequence 1 \
     --tls \
     --cafile ${ORDERER_TLS_CA} \
-    --signature-policy "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member','Org4MSP.member')"
+    --signature-policy "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member','Org4MSP.member')" \
+    --collections-config /workspace/chaincode/lc/collections_config.json \
+    --validation-plugin vscc
 }
+
+echo "Pulling required chaincode environment image"
+docker pull hyperledger/fabric-ccenv:2.5
 
 echo "Packaging chaincode"
 run_peer lifecycle chaincode package ${CHAINCODE_PACKAGE} --path ${CHAINCODE_PATH} --lang golang --label ${CHAINCODE_LABEL}
@@ -119,6 +131,9 @@ docker run --rm --network ${DOCKER_NETWORK} \
     --sequence 1 \
     --tls \
     --cafile ${ORDERER_TLS_CA} \
+    --signature-policy "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member','Org4MSP.member')" \
+    --collections-config /workspace/chaincode/lc/collections_config.json \
+    --validation-plugin vscc \
     --peerAddresses peer0.org1.example.com:7051 \
     --tlsRootCertFiles /workspace/network/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt \
     --peerAddresses peer0.org2.example.com:8051 \
