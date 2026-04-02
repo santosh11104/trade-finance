@@ -13,7 +13,7 @@ module.exports = {
   dbUrl: process.env.DATABASE_URL || 'postgres://postgres:postgres@postgres:5432/tradefinance',
   fabric: {
     walletPath: process.env.FABRIC_WALLET_PATH || path.resolve(__dirname, '../wallet'),
-    connectionProfile: path.resolve(__dirname, '../../config/connection-profile.json'),
+    connectionProfile: path.resolve(__dirname, '../../blockchain-api/config/connection-profile.json'),
     channelName: process.env.FABRIC_CHANNEL_NAME || 'tradechannel',
     chaincodeName: process.env.FABRIC_CHAINCODE_NAME || 'lccontract',
     userId: process.env.FABRIC_USER_ID || 'appUser',

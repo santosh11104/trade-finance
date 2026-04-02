@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-ROOT_DIR=$(cd "$(dirname "$0")/../.." && pwd)
-NETWORK_DIR="${ROOT_DIR}/network"
+ROOT_DIR=$(cd "$(dirname "$0")/../../.." && pwd)
+NETWORK_DIR="${ROOT_DIR}/blockchain-api/network"
 COMPOSE_FILE="${NETWORK_DIR}/docker-compose.yml"
 export FABRIC_CFG_PATH="${NETWORK_DIR}/config"
 
@@ -10,9 +10,14 @@ function docker_compose() {
   docker compose -f "${COMPOSE_FILE}" "$@" || docker-compose -f "${COMPOSE_FILE}" "$@"
 }
 
+USER_ID="$(id -u):$(id -g)"
+
 function fabric_tool() {
-  docker run --rm -v "${ROOT_DIR}":/workspace -w /workspace/network -e FABRIC_CFG_PATH=/workspace/network/config hyperledger/fabric-tools:2.5 "$@"
+  docker run --rm -u "${USER_ID}" -v "${ROOT_DIR}":/workspace -w /workspace/blockchain-api/network -e FABRIC_CFG_PATH=/workspace/blockchain-api/network/config hyperledger/fabric-tools:2.5 "$@"
 }
+
+echo "==> Cleaning existing generated network artifacts"
+docker run --rm -v "${NETWORK_DIR}":/workspace -w /workspace alpine sh -c 'rm -rf crypto-config channel-artifacts peer-artifacts chaincode-package || true'
 
 echo "==> Generate crypto material using cryptogen for MSP directories"
 mkdir -p "${NETWORK_DIR}/crypto-config" "${NETWORK_DIR}/channel-artifacts"

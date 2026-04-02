@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-ROOT_DIR=$(cd "$(dirname "$0")/../.." && pwd)
-NETWORK_DIR="${ROOT_DIR}/network"
+ROOT_DIR=$(cd "$(dirname "$0")/../../.." && pwd)
+NETWORK_DIR="${ROOT_DIR}/blockchain-api/network"
 SCRIPTS_DIR="${NETWORK_DIR}/scripts"
 
 function wait_for_container() {
@@ -41,14 +41,7 @@ bash create-channel.sh
 echo "==> Deploying chaincode"
 bash deploy-chaincode.sh
 
-echo "==> Starting Postgres and API services"
-docker compose -f "${NETWORK_DIR}/docker-compose.yml" up -d postgres api || docker-compose -f "${NETWORK_DIR}/docker-compose.yml" up -d postgres api
+echo "==> All Fabric deployment steps completed successfully"
 
-wait_for_container tradefinance-postgres
-wait_for_container tradefinance-api
+echo "To start the API and database separately, use the instructions in the repository README."
 
-echo "==> All deployment steps completed successfully"
-
-echo "API is available at http://localhost:4000"
-
-echo "If you prefer to run the API locally, use 'DATABASE_URL=postgres://postgres:postgres@localhost:5432/tradefinance npm start' from the api directory"

@@ -14,10 +14,10 @@ The system includes:
 
 ## Repository Structure
 
-- `network/` — Hyperledger Fabric network configuration, Docker deployment, and lifecycle scripts
+- `blockchain-api/network/` — Hyperledger Fabric network configuration, Docker deployment, and lifecycle scripts
+- `blockchain-api/config/` — Fabric connection profile used by the API gateway
 - `chaincode/lc/` — Go chaincode source and private data collection definitions
 - `api/` — Node.js REST API, authentication, Fabric gateway client, and PostgreSQL sync
-- `config/` — Fabric connection profile used by the API
 - `db/` — PostgreSQL schema and migration SQL
 - `docs/` — API request collection and supporting documentation
 
@@ -30,26 +30,45 @@ The system includes:
 
 ## Quick Start
 
-Start the Fabric network:
+Start the Fabric network, create the channel, and deploy chaincode in one command:
 
 ```bash
-cd network
-bash scripts/network-up.sh
+cd blockchain-api/network
+bash scripts/start-all.sh
 ```
 
-Create the channel and deploy chaincode:
+### One-command BC startup flow
+
+This repository supports a fully automated Fabric network and chaincode launch sequence:
 
 ```bash
-bash scripts/create-channel.sh
-bash scripts/deploy-chaincode.sh
+cd blockchain-api/network
+bash scripts/start-all.sh
 ```
 
-Launch the API server:
+That single command performs:
+- Fabric CA and peer startup
+- channel creation or fetch for `tradechannel`
+- chaincode packaging, installation, approval, and commit across all orgs
+
+### API startup is manual
+
+The API is intentionally not started automatically by the Fabric network launcher.
+Start the API separately once the Fabric network and chaincode are ready.
+
+To launch the API and Postgres manually from the blockchain-api compose folder:
 
 ```bash
-cd ../api
-npm install
-npm start
+cd blockchain-api/network
+docker compose up -d postgres api
+```
+
+Or run the API locally with an existing Postgres instance:
+
+```bash
+cd api
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/tradefinance npm install
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/tradefinance npm start
 ```
 
 ## API Endpoints

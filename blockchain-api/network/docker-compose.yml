@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   ca_org1:
     image: hyperledger/fabric-ca:1.5
@@ -76,6 +74,7 @@ services:
       - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
       - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
       - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_GENERAL_TLS_CLIENTAUTHREQUIRED=false
     ports:
       - 7050:7050
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric
@@ -238,13 +237,13 @@ services:
     container_name: tradefinance-api
     working_dir: /usr/src/app
     volumes:
-      - ./api:/usr/src/app
+      - ../../api:/usr/src/app
       - /usr/src/app/node_modules
     command: sh -c "npm install && npm start"
     ports:
       - 4000:4000
     env_file:
-      - ../.env.example
+      - ../../.env.example
     depends_on:
       - postgres
       - orderer.example.com

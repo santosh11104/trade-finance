@@ -1,19 +1,20 @@
 #!/bin/bash
 set -e
 
-ROOT_DIR=$(cd "$(dirname "$0")/../.." && pwd)
-WORKDIR=/workspace/network
+ROOT_DIR=$(cd "$(dirname "$0")/../../.." && pwd)
+WORKDIR=/workspace/blockchain-api/network
+USER_ID="$(id -u):$(id -g)"
 DOCKER_NETWORK=network_default
 CHANNEL_NAME=tradechannel
 ORDERER_ADDRESS=orderer.example.com:7050
 CHANNEL_TX=./channel-artifacts/channel.tx
 
 function run_peer() {
-  docker run --rm \
+  docker run --rm -u "${USER_ID}" \
     --network ${DOCKER_NETWORK} \
     -v "${ROOT_DIR}":/workspace \
     -w "${WORKDIR}" \
-    -e FABRIC_CFG_PATH=/workspace/network/config \
+    -e FABRIC_CFG_PATH=/workspace/blockchain-api/network/config \
     -e CORE_PEER_TLS_ENABLED=true \
     -e CORE_PEER_LOCALMSPID="${CORE_PEER_LOCALMSPID}" \
     -e CORE_PEER_MSPCONFIGPATH="/workspace/${CORE_PEER_MSPCONFIGPATH}" \
@@ -30,8 +31,8 @@ function createChannel() {
   local ORG_DOMAIN=$5
 
   CORE_PEER_LOCALMSPID=${ORG_MSP}
-  CORE_PEER_MSPCONFIGPATH="network/crypto-config/${MSP_PATH}/users/Admin@${ORG_DOMAIN}/msp"
-  CORE_PEER_TLS_ROOTCERT_FILE="network/config/tls-root-cas.pem"
+  CORE_PEER_MSPCONFIGPATH="blockchain-api/network/crypto-config/${MSP_PATH}/users/Admin@${ORG_DOMAIN}/msp"
+  CORE_PEER_TLS_ROOTCERT_FILE="blockchain-api/network/config/tls-root-cas.pem"
   CORE_PEER_ADDRESS="${PEER}:${PORT}"
 
   if [ -f ./channel-artifacts/${CHANNEL_NAME}.block ]; then
@@ -40,9 +41,9 @@ function createChannel() {
   fi
 
   echo "Creating channel block with ${PEER}"
-  if ! run_peer channel create -o ${ORDERER_ADDRESS} -c ${CHANNEL_NAME} -f ${CHANNEL_TX} --outputBlock ./channel-artifacts/${CHANNEL_NAME}.block --tls --cafile /workspace/network/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem; then
+  if ! run_peer channel create -o ${ORDERER_ADDRESS} -c ${CHANNEL_NAME} -f ${CHANNEL_TX} --outputBlock ./channel-artifacts/${CHANNEL_NAME}.block --tls --cafile /workspace/blockchain-api/network/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem; then
     echo "Channel already exists or create failed; fetching block instead"
-    run_peer channel fetch 0 ./channel-artifacts/${CHANNEL_NAME}.block -o ${ORDERER_ADDRESS} -c ${CHANNEL_NAME} --tls --cafile /workspace/network/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+    run_peer channel fetch 0 ./channel-artifacts/${CHANNEL_NAME}.block -o ${ORDERER_ADDRESS} -c ${CHANNEL_NAME} --tls --cafile /workspace/blockchain-api/network/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
   fi
 }
 
@@ -54,8 +55,8 @@ function joinChannel() {
   local ORG_DOMAIN=$5
 
   CORE_PEER_LOCALMSPID=${ORG_MSP}
-  CORE_PEER_MSPCONFIGPATH="network/crypto-config/${MSP_PATH}/users/Admin@${ORG_DOMAIN}/msp"
-  CORE_PEER_TLS_ROOTCERT_FILE="network/config/tls-root-cas.pem"
+  CORE_PEER_MSPCONFIGPATH="blockchain-api/network/crypto-config/${MSP_PATH}/users/Admin@${ORG_DOMAIN}/msp"
+  CORE_PEER_TLS_ROOTCERT_FILE="blockchain-api/network/config/tls-root-cas.pem"
   CORE_PEER_ADDRESS="${PEER}:${PORT}"
 
   echo "Joining ${PEER} to channel"
