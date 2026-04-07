@@ -34,8 +34,25 @@ echo "==> Generate genesis block and channel configuration"
 fabric_tool configtxgen --profile TradeChannel --channelID tradechannel --outputCreateChannelTx ./channel-artifacts/channel.tx
 fabric_tool configtxgen --profile TradeGenesis --channelID system-channel --outputBlock ./channel-artifacts/genesis.block
 
+echo "==> Bring up CouchDB containers for state database"
+docker_compose up -d couchdb0.org1 couchdb0.org2 couchdb0.org3 couchdb0.org4
+
+echo "==> Waiting for CouchDB containers to be ready..."
+sleep 5
+
 echo "==> Bring up Fabric CA servers and peers"
 docker_compose up -d ca_org1 ca_org2 ca_org3 ca_org4 orderer.example.com peer0.org1.example.com peer0.org2.example.com peer0.org3.example.com peer0.org4.example.com
+
+# Ensure tradefinance network exists and all containers are connected
+echo "==> Ensuring tradefinance network is configured..."
+docker network inspect tradefinance >/dev/null 2>&1 || docker network create tradefinance
+
+# Connect containers to tradefinance network if not already connected
+for container in orderer.example.com peer0.org1.example.com peer0.org2.example.com peer0.org3.example.com peer0.org4.example.com; do
+  if ! docker network inspect tradefinance | grep -q "${container}"; then
+    docker network connect tradefinance "${container}" 2>/dev/null || true
+  fi
+done
 
 echo "==> Network is starting. Use scripts/create-channel.sh to join peers to channel."
 

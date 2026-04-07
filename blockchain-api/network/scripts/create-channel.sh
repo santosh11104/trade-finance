@@ -4,7 +4,7 @@ set -e
 ROOT_DIR=$(cd "$(dirname "$0")/../../.." && pwd)
 WORKDIR=/workspace/blockchain-api/network
 USER_ID="$(id -u):$(id -g)"
-DOCKER_NETWORK=network_default
+DOCKER_NETWORK=tradefinance
 CHANNEL_NAME=tradechannel
 ORDERER_ADDRESS=orderer.example.com:7050
 CHANNEL_TX=./channel-artifacts/channel.tx
