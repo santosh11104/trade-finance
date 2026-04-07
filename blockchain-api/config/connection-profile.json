@@ -22,9 +22,9 @@
   },
   "peers": {
     "peer0.org1.example.com": {
-      "url": "grpcs://peer0.org1.example.com:7051",
+      "url": "grpcs://localhost:7051",
       "tlsCACerts": {
-        "path": "../network/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt"
+        "path": "./blockchain-api/network/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt"
       },
       "grpcOptions": {
         "ssl-target-name-override": "peer0.org1.example.com",
@@ -34,9 +34,9 @@
   },
   "orderers": {
     "orderer.example.com": {
-      "url": "grpcs://orderer.example.com:7050",
+      "url": "grpcs://localhost:7050",
       "tlsCACerts": {
-        "path": "../network/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt"
+        "path": "./blockchain-api/network/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls/ca.crt"
       },
       "grpcOptions": {
         "ssl-target-name-override": "orderer.example.com",
@@ -49,7 +49,7 @@
       "url": "https://ca_org1:7054",
       "caName": "ca-org1",
       "tlsCACerts": {
-        "path": "../network/crypto-config/peerOrganizations/org1.example.com/ca/ca.org1.example.com-cert.pem"
+        "path": "./blockchain-api/network/crypto-config/peerOrganizations/org1.example.com/ca/ca.org1.example.com-cert.pem"
       },
       "httpOptions": {
         "verify": false

@@ -18,6 +18,7 @@ module.exports = {
     chaincodeName: process.env.FABRIC_CHAINCODE_NAME || 'lccontract',
     userId: process.env.FABRIC_USER_ID || 'appUser',
     orgMsp: process.env.FABRIC_ORG_MSP || 'Org1MSP',
+    discoveryEnabled: process.env.FABRIC_DISCOVERY_ENABLED !== 'false',
     discoveryAsLocalhost: process.env.FABRIC_DISCOVERY_AS_LOCALHOST === 'true',
   }
 };

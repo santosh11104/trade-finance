@@ -10,14 +10,20 @@ The system includes:
 - A primary `tradechannel` plus private data collections for sensitive trade documents and risk data
 - Go chaincode implementing the full LC lifecycle
 - A Node.js REST API layer with JWT authentication, RBAC, and PostgreSQL integration
+- CouchDB as the state database for rich queries
+- Hyperledger Explorer for blockchain visibility
+- Prometheus + Grafana for monitoring and metrics
+- OpenTelemetry + Jaeger for distributed tracing
 - Docker Compose deployment for local development
 
 ## Repository Structure
 
 - `blockchain-api/network/` — Hyperledger Fabric network configuration, Docker deployment, and lifecycle scripts
 - `blockchain-api/config/` — Fabric connection profile used by the API gateway
+- `blockchain-api/network/explorer/` — Hyperledger Explorer configuration
+- `blockchain-api/network/monitoring/` — Prometheus and Grafana configuration
 - `chaincode/lc/` — Go chaincode source and private data collection definitions
-- `api/` — Node.js REST API, authentication, Fabric gateway client, and PostgreSQL sync
+- `api/` — Node.js REST API, authentication, Fabric gateway client, PostgreSQL sync, and OpenTelemetry tracing
 - `db/` — PostgreSQL schema and migration SQL
 - `docs/` — API request collection and supporting documentation
 
@@ -30,7 +36,7 @@ The system includes:
 
 ## Quick Start
 
-Start the Fabric network, create the channel, and deploy chaincode in one command:
+Start the Fabric network, PostgreSQL, monitoring stack, create the channel, deploy chaincode, and set up the wallet in one command:
 
 ```bash
 cd blockchain-api/network
@@ -39,7 +45,7 @@ bash scripts/start-all.sh
 
 ### One-command BC startup flow
 
-This repository supports a fully automated Fabric network and chaincode launch sequence:
+This repository supports a fully automated Fabric network, chaincode, and observability stack launch sequence:
 
 ```bash
 cd blockchain-api/network
@@ -48,26 +54,40 @@ bash scripts/start-all.sh
 
 That single command performs:
 - Fabric CA and peer startup
-- channel creation or fetch for `tradechannel`
-- chaincode packaging, installation, approval, and commit across all orgs
+- CouchDB state database containers for all peers
+- Channel creation for `tradechannel`
+- Chaincode packaging, installation, approval, and commit across all orgs
+- Monitoring stack startup (Prometheus, Grafana, Jaeger, Hyperledger Explorer)
+- Wallet identity creation for the API
+
+### Monitoring & Observability Stack
+
+After running `start-all.sh`, the following services are available:
+
+| Service | Port | URL | Description |
+|---------|------|-----|-------------|
+| **Hyperledger Explorer** | 8082 | http://localhost:8082 | Blockchain visibility (login: exploreradmin/exploreradminpw) |
+| **Grafana** | 3000 | http://localhost:3000 | Metrics dashboards (login: admin/admin) |
+| **Prometheus** | 9090 | http://localhost:9090 | Metrics collection |
+| **Jaeger** | 16686 | http://localhost:16686 | Distributed tracing |
+| **cAdvisor** | 8081 | http://localhost:8081 | Container metrics |
 
 ### API startup is manual
 
-The API is intentionally not started automatically by the Fabric network launcher.
-Start the API separately once the Fabric network and chaincode are ready.
+The API server is intentionally not started automatically by `start-all.sh`.
+Start the API separately once the Fabric network, chaincode, and monitoring stack are ready.
 
-To launch the API and Postgres manually from the blockchain-api compose folder:
-
-```bash
-cd blockchain-api/network
-docker compose up -d postgres api
-```
-
-Or run the API locally with an existing Postgres instance:
+To start the API locally (after running `start-all.sh`):
 
 ```bash
 cd api
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/tradefinance npm install
+npm start
+```
+
+Or run the API with an explicit database URL:
+
+```bash
+cd api
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/tradefinance npm start
 ```
 
@@ -105,6 +125,7 @@ git push -u origin main
 - TLS is enabled throughout the Fabric network.
 - JWT authentication secures the API layer.
 - `.env` is excluded via `.gitignore`; use `.env.example` as a template.
+- CouchDB is used as the state database for rich query support.
 
 ## How It Works
 
@@ -115,9 +136,61 @@ git push -u origin main
 5. Issuing Bank verifies the documents and releases payment via `verifyDocuments()` and `releasePayment()`.
 6. Amendments and cancellations support multi-party approval workflows.
 
-## Notes
+## Organization Mapping
 
+The Fabric network uses standard MSP names with the following business mapping:
+
+| MSP | Organization | Role |
+|-----|--------------|------|
+| Org1MSP | Importer | Initiates LC requests |
+| Org2MSP | Exporter | Receives LC, ships goods |
+| Org3MSP | Issuing Bank | Issues and pays LC |
+| Org4MSP | Advising/Confirming Bank | Validates and confirms LC |
+
+## Enterprise Features Implemented
+
+### 1. CouchDB State Database
+- Each peer has its own CouchDB container for rich query support
+- Enables complex queries on state data using JSON/Mango queries
+- Supports indexing for performance optimization
+- CouchDB Web UI accessible on ports 5984, 6984, 7984, 8984
+
+### 2. Hyperledger Explorer
+- Complete blockchain visibility via web interface
+- View blocks, transactions, chaincode, and channel information
+- Real-time monitoring of network activity
+- Multi-organization support with role-based views
+
+### 3. Monitoring Stack (Prometheus + Grafana)
+- **Prometheus**: Time-series metrics collection
+- **Grafana**: Pre-configured dashboards for Fabric monitoring
+- **Node Exporter**: System-level metrics (CPU, memory, disk)
+- **cAdvisor**: Container metrics and resource usage
+- Pre-built dashboard showing service status and system resources
+
+### 4. Distributed Tracing (OpenTelemetry + Jaeger)
+- **OpenTelemetry**: Auto-instrumentation for API requests
+- **Jaeger**: Trace visualization and request flow analysis
+- Tracks requests across API → Fabric → Chaincode
+- Supports HTTP, Express, and PostgreSQL tracing
+- Environment variables configured for OTLP export
+
+### 5. Private Data Collections
 - `pricingCollection` is shared only between Org1 and Org3.
 - `shipmentDocsCollection` is shared only between Org2 and Org4.
 - `bankRiskCollection` is restricted to Org3.
 - Private data collection policies enforce access control for sensitive trade documents.
+
+### 6. Event Handling & Off-chain Sync
+- Chaincode Event Listener listens for `LCEvent` events
+- Syncs events to PostgreSQL audit logs
+- Off-chain database (`lc_metadata` table) for fast queries
+- Real-time metadata synchronization
+
+## Notes
+
+- All CouchDB instances are configured with authentication (admin/adminpw)
+- Prometheus scrapes metrics every 15 seconds
+- Jaeger accepts traces via OTLP on gRPC port 4317
+- The API tracing module auto-instruments Express, HTTP, and PostgreSQL
+- To view CouchDB data: `curl http://admin:adminpw@localhost:5984/_all_dbs`

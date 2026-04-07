@@ -84,6 +84,17 @@ services:
       - ./crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/orderer/msp
       - ./crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/tls:/var/hyperledger/orderer/tls
 
+  couchdb0.org1:
+    image: hyperledger/fabric-couchdb:latest
+    container_name: couchdb0.org1
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - 5984:5984
+    volumes:
+      - couchdb0.org1:/opt/couchdb/data
+
   peer0.org1.example.com:
     image: hyperledger/fabric-peer:2.5
     container_name: peer0.org1.example.com
@@ -104,6 +115,10 @@ services:
       - CORE_PEER_GOSSIP_USELEADERELECTION=true
       - CORE_PEER_GOSSIP_ORGLEADER=false
       - CORE_PEER_PROFILE_ENABLED=true
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0.org1:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
     ports:
       - 7051:7051
       - 7053:7053
@@ -116,6 +131,18 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - orderer.example.com
+      - couchdb0.org1
+
+  couchdb0.org2:
+    image: hyperledger/fabric-couchdb:latest
+    container_name: couchdb0.org2
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - 6984:5984
+    volumes:
+      - couchdb0.org2:/opt/couchdb/data
 
   peer0.org2.example.com:
     image: hyperledger/fabric-peer:2.5
@@ -137,6 +164,10 @@ services:
       - CORE_PEER_GOSSIP_USELEADERELECTION=true
       - CORE_PEER_GOSSIP_ORGLEADER=false
       - CORE_PEER_PROFILE_ENABLED=true
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0.org2:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
     ports:
       - 8051:8051
       - 8053:8053
@@ -149,6 +180,18 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - orderer.example.com
+      - couchdb0.org2
+
+  couchdb0.org3:
+    image: hyperledger/fabric-couchdb:latest
+    container_name: couchdb0.org3
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - 7984:5984
+    volumes:
+      - couchdb0.org3:/opt/couchdb/data
 
   peer0.org3.example.com:
     image: hyperledger/fabric-peer:2.5
@@ -170,6 +213,10 @@ services:
       - CORE_PEER_GOSSIP_USELEADERELECTION=true
       - CORE_PEER_GOSSIP_ORGLEADER=false
       - CORE_PEER_PROFILE_ENABLED=true
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0.org3:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
     ports:
       - 9051:9051
       - 9053:9053
@@ -182,6 +229,18 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - orderer.example.com
+      - couchdb0.org3
+
+  couchdb0.org4:
+    image: hyperledger/fabric-couchdb:latest
+    container_name: couchdb0.org4
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - 8984:5984
+    volumes:
+      - couchdb0.org4:/opt/couchdb/data
 
   peer0.org4.example.com:
     image: hyperledger/fabric-peer:2.5
@@ -203,6 +262,10 @@ services:
       - CORE_PEER_GOSSIP_USELEADERELECTION=true
       - CORE_PEER_GOSSIP_ORGLEADER=false
       - CORE_PEER_PROFILE_ENABLED=true
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0.org4:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
     ports:
       - 10051:10051
       - 10053:10053
@@ -215,6 +278,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - orderer.example.com
+      - couchdb0.org4
 
   postgres:
     image: postgres:15
@@ -231,6 +295,70 @@ services:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       retries: 5
+
+  # Hyperledger Explorer - Blockchain Visibility
+  explorerdb.mynetwork.com:
+    image: postgres:15-alpine
+    container_name: explorerdb.mynetwork.com
+    hostname: explorerdb.mynetwork.com
+    environment:
+      - POSTGRES_DB=fabricexplorer
+      - POSTGRES_USER=hppoc
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - pgdataexplorer:/var/lib/postgresql/data
+    networks:
+      - tradefinance
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hppoc -d fabricexplorer"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  explorer.mynetwork.com:
+    image: hyperledger/explorer:latest
+    container_name: explorer.mynetwork.com
+    hostname: explorer.mynetwork.com
+    environment:
+      - DATABASE_HOST=explorerdb.mynetwork.com
+      - DATABASE_DATABASE=fabricexplorer
+      - DATABASE_USERNAME=hppoc
+      - DATABASE_PASSWORD=password
+      - DATABASE_PORT=5432
+      - LOG_LEVEL_APP=debug
+      - LOG_LEVEL_DB=debug
+      - LOG_LEVEL_CONSOLE=info
+      - LOG_CONSOLE_STDOUT=true
+      - DISCOVERY_AS_LOCALHOST=false
+      - EXPLORER_CONFIG_FILE_PATH=./config.json
+      - EXPLORER_PROFILE_DIR_PATH=./connection-profile
+    volumes:
+      - ./explorer/config.json:/opt/explorer/app/platform/fabric/config.json
+      - ./explorer/connection-profile:/opt/explorer/app/platform/fabric/connection-profile
+      - ./crypto-config:/opt/explorer/crypto-config
+      - ./config/tls-root-cas.pem:/opt/explorer/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca-chain.pem
+      - ./config/tls-root-cas.pem:/opt/explorer/crypto-config/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca-chain.pem
+      - ./config/tls-root-cas.pem:/opt/explorer/crypto-config/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca-chain.pem
+      - ./config/tls-root-cas.pem:/opt/explorer/crypto-config/peerOrganizations/org4.example.com/peers/peer0.org4.example.com/tls/ca-chain.pem
+      - ./wallet:/opt/explorer/wallet
+      - ./explorer/entrypoint.sh:/opt/explorer/entrypoint.sh
+    ports:
+      - 8082:8080
+    command: sh /opt/explorer/entrypoint.sh
+    depends_on:
+      explorerdb.mynetwork.com:
+        condition: service_healthy
+      peer0.org1.example.com:
+        condition: service_started
+      peer0.org2.example.com:
+        condition: service_started
+      peer0.org3.example.com:
+        condition: service_started
+      peer0.org4.example.com:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - tradefinance
 
   api:
     image: node:18-alpine
@@ -251,6 +379,106 @@ services:
       - peer0.org2.example.com
       - peer0.org3.example.com
       - peer0.org4.example.com
+    networks:
+      - tradefinance
+
+  # Prometheus - Metrics Collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: tradefinance-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    ports:
+      - 9090:9090
+    networks:
+      - tradefinance
+
+  # Grafana - Dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: tradefinance-grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - 3000:3000
+    depends_on:
+      - prometheus
+    networks:
+      - tradefinance
+
+  # Node Exporter - System metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: tradefinance-node-exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    ports:
+      - 9100:9100
+    networks:
+      - tradefinance
+
+  # Cadvisor - Container metrics
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: tradefinance-cadvisor
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /cgroup:/cgroup:ro
+    ports:
+      - 8081:8080
+    networks:
+      - tradefinance
+
+  # Jaeger - Distributed Tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: tradefinance-jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - 16686:16686    # Jaeger UI
+      - 4317:4317      # OTLP gRPC
+      - 4318:4318      # OTLP HTTP
+    networks:
+      - tradefinance
+
+networks:
+  tradefinance:
+    driver: bridge
 
 volumes:
   pgdata:
+  pgdataexplorer:
+  couchdb0.org1:
+  couchdb0.org2:
+  couchdb0.org3:
+  couchdb0.org4:
+  prometheus_data:
+  grafana_data:
