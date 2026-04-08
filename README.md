@@ -94,13 +94,51 @@ DATABASE_URL=postgres://postgres:postgres@localhost:5432/tradefinance npm start
 ## API Endpoints
 
 Supported endpoints:
-- `POST /lc/create`
-- `POST /lc/issue`
-- `POST /lc/confirm`
-- `POST /lc/ship`
-- `POST /lc/verify`
-- `POST /lc/pay`
-- `GET /lc/:id`
+- `POST /lc/create` - Create LC (Importer)
+- `POST /lc/issue` - Issue LC with **two-phase endorsement** (Importer proposes, Issuing Bank approves)
+- `POST /lc/advise` - Advise LC (Advising Bank)
+- `POST /lc/confirm` - Confirm LC (Advising Bank)
+- `POST /lc/ship` - Submit shipment documents (Exporter)
+- `POST /lc/verify` - Verify documents (Issuing Bank)
+- `POST /lc/pay` - Release payment with **two-phase endorsement** (Exporter proposes, Issuing Bank approves)
+- `POST /lc/amend` - Amend LC (Importer/Issuing Bank)
+- `POST /lc/cancel` - Cancel LC (Importer/Issuing Bank)
+- `GET /lc/:id` - Query LC by ID
+- `GET /lc/:id/history` - Get LC status history
+
+### Two-Phase Endorsement Flow
+
+Certain critical operations require **dual endorsement** for security:
+
+| Operation | Phase 1 (Propose) | Phase 2 (Approve) | Final Status |
+|-----------|-------------------|-------------------|--------------|
+| `/lc/issue` | Importer (Org1) submits pricing | Issuing Bank (Org3) approves | `ISSUED` |
+| `/lc/pay` | Exporter (Org2) requests payment | Issuing Bank (Org3) approves | `PAID` |
+
+**Intermediate States:**
+- `ISSUE_PENDING` - Waiting for issuing bank approval
+- `PAYMENT_PENDING` - Waiting for issuing bank approval
+
+### LC Status Lifecycle
+
+```
+CREATED → ISSUE_PENDING → ISSUED → ADVISED → CONFIRMED → SHIPPED → VERIFIED → PAYMENT_PENDING → PAID
+   ↓          ↓              ↓
+CANCELLED  (can cancel)   (can amend at any point before PAID)
+```
+
+| Status | Description |
+|--------|-------------|
+| `CREATED` | LC created by Importer |
+| `ISSUE_PENDING` | Awaiting Issuing Bank approval (two-phase) |
+| `ISSUED` | LC issued by Issuing Bank |
+| `ADVISED` | LC advised to Advising Bank |
+| `CONFIRMED` | LC confirmed by Advising Bank |
+| `SHIPPED` | Documents submitted by Exporter |
+| `VERIFIED` | Documents verified by Issuing Bank |
+| `PAYMENT_PENDING` | Awaiting Issuing Bank approval for payment (two-phase) |
+| `PAID` | Payment released |
+| `CANCELLED` | LC cancelled (terminal state) |
 
 ## GitHub / CI Ready
 
@@ -130,11 +168,18 @@ git push -u origin main
 ## How It Works
 
 1. Importer (Org1) creates an LC request with `createLC()`.
-2. Issuing Bank (Org3) issues the LC using `issueLC()` with private pricing details kept in `pricingCollection`.
+2. **Two-phase issuance:**
+   - Importer (Org1) proposes the LC using `issueLC()` with pricing data
+   - Issuing Bank (Org3) approves to finalize issuance
+   - Private pricing details kept in `pricingCollection`
 3. Advising Bank (Org4) receives and confirms the LC via `adviseLC()` and `confirmLC()`.
 4. Exporter (Org2) submits shipment documents through `submitDocuments()`, stored in `shipmentDocsCollection`.
-5. Issuing Bank verifies the documents and releases payment via `verifyDocuments()` and `releasePayment()`.
-6. Amendments and cancellations support multi-party approval workflows.
+5. Issuing Bank verifies the documents via `verifyDocuments()`.
+6. **Two-phase payment:**
+   - Exporter (Org2) proposes payment release via `releasePayment()`
+   - Issuing Bank (Org3) approves to finalize payment
+   - Payment details stored in `bankRiskCollection`
+7. Amendments and cancellations support multi-party approval workflows.
 
 ## Organization Mapping
 
@@ -149,43 +194,49 @@ The Fabric network uses standard MSP names with the following business mapping:
 
 ## Enterprise Features Implemented
 
-### 1. CouchDB State Database
+### 1. Two-Phase Endorsement Security
+- Critical operations (`issueLC`, `releasePayment`) require **dual endorsement**
+- Importer/Exporter proposes → Issuing Bank approves
+- Prevents single-actor compromise from executing financial transactions
+- Proposal state tracked on-chain with `IssueProposal` and `PaymentProposal` records
+
+### 2. CouchDB State Database
 - Each peer has its own CouchDB container for rich query support
 - Enables complex queries on state data using JSON/Mango queries
 - Supports indexing for performance optimization
 - CouchDB Web UI accessible on ports 5984, 6984, 7984, 8984
 
-### 2. Hyperledger Explorer
+### 3. Hyperledger Explorer
 - Complete blockchain visibility via web interface
 - View blocks, transactions, chaincode, and channel information
 - Real-time monitoring of network activity
 - Multi-organization support with role-based views
 
-### 3. Monitoring Stack (Prometheus + Grafana)
+### 4. Monitoring Stack (Prometheus + Grafana)
 - **Prometheus**: Time-series metrics collection
 - **Grafana**: Pre-configured dashboards for Fabric monitoring
 - **Node Exporter**: System-level metrics (CPU, memory, disk)
 - **cAdvisor**: Container metrics and resource usage
 - Pre-built dashboard showing service status and system resources
 
-### 4. Distributed Tracing (OpenTelemetry + Jaeger)
+### 5. Distributed Tracing (OpenTelemetry + Jaeger)
 - **OpenTelemetry**: Auto-instrumentation for API requests
 - **Jaeger**: Trace visualization and request flow analysis
 - Tracks requests across API → Fabric → Chaincode
 - Supports HTTP, Express, and PostgreSQL tracing
 - Environment variables configured for OTLP export
 
-### 5. Private Data Collections
+### 6. Private Data Collections
 - `pricingCollection` is shared only between Org1 and Org3.
 - `shipmentDocsCollection` is shared only between Org2 and Org4.
 - `bankRiskCollection` is restricted to Org3.
 - Private data collection policies enforce access control for sensitive trade documents.
 
-### 6. Event Handling & Off-chain Sync
+### 7. Event Handling & Off-chain Sync
 - Chaincode Event Listener listens for `LCEvent` events
 - Syncs events to PostgreSQL audit logs
 - Off-chain database (`lc_metadata` table) for fast queries
-- Real-time metadata synchronization
+- Real-time metadata synchronization including proposal/approval tracking
 
 ## Notes
 

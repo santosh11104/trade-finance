@@ -13,6 +13,19 @@
       }
     }
   },
+  "channels": {
+    "tradechannel": {
+      "orderers": ["orderer.example.com"],
+      "peers": {
+        "peer0.org1.example.com": {
+          "endorsingPeer": true,
+          "chaincodeQuery": true,
+          "ledgerQuery": true,
+          "eventSource": true
+        }
+      }
+    }
+  },
   "organizations": {
     "Org1MSP": {
       "mspid": "Org1MSP",

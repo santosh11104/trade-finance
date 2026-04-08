@@ -31,6 +31,16 @@ type LC struct {
     History        []string          `json:"history,omitempty"`
     CreatedAt      string            `json:"createdAt"`
     UpdatedAt      string            `json:"updatedAt"`
+    // Two-phase approval tracking for multi-party operations
+    IssueProposal  *ApprovalRecord   `json:"issueProposal,omitempty"`
+    PaymentProposal *ApprovalRecord  `json:"paymentProposal,omitempty"`
+}
+
+type ApprovalRecord struct {
+    ProposedBy string `json:"proposedBy"`
+    ApprovedBy string `json:"approvedBy,omitempty"`
+    Timestamp  string `json:"timestamp"`
+    Data       string `json:"data,omitempty"`
 }
 
 type LCEvent struct {
@@ -128,6 +138,8 @@ func (s *SmartContract) createLC(APIstub shim.ChaincodeStubInterface, args []str
     return shim.Success(data)
 }
 
+// issueLC implements two-phase approval: Org1 (Importer) proposes, Org3 (Issuing Bank) approves
+// Args: [id, pricingData]
 func (s *SmartContract) issueLC(APIstub shim.ChaincodeStubInterface, args []string) *sc.Response {
     if len(args) < 2 {
         return shim.Error("issueLC requires 2 arguments: id, pricingData")
@@ -136,32 +148,66 @@ func (s *SmartContract) issueLC(APIstub shim.ChaincodeStubInterface, args []stri
     if err != nil {
         return shim.Error(err.Error())
     }
-    if mspid != "Org3MSP" && mspid != "Org1MSP" {
-        return shim.Error("issueLC requires Issuing Bank and Importer endorsement")
-    }
 
     lc, err := s.fetchLC(APIstub, args[0])
     if err != nil {
         return shim.Error(err.Error())
     }
-    if lc.Status != "CREATED" {
-        return shim.Error("LC must be in CREATED state to issue")
+    if lc.Status != "CREATED" && lc.Status != "ISSUE_PENDING" {
+        return shim.Error("LC must be in CREATED state to initiate issue")
     }
 
-    lc.Status = "ISSUED"
-    lc.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
-    lc.History = append(lc.History, "ISSUED")
-    if err := s.persistLC(APIstub, lc); err != nil {
-        return shim.Error(err.Error())
+    // Phase 1: Importer (Org1) proposes the LC issuance
+    if mspid == "Org1MSP" {
+        if lc.IssueProposal != nil {
+            return shim.Error("issue proposal already exists, waiting for Issuing Bank approval")
+        }
+        lc.Status = "ISSUE_PENDING"
+        lc.IssueProposal = &ApprovalRecord{
+            ProposedBy: mspid,
+            Timestamp:  time.Now().UTC().Format(time.RFC3339),
+            Data:       args[1],
+        }
+        lc.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+        lc.History = append(lc.History, "ISSUE_PROPOSED")
+        if err := s.persistLC(APIstub, lc); err != nil {
+            return shim.Error(err.Error())
+        }
+        s.emitEvent(APIstub, lc.ID, "ISSUE_PROPOSED")
+        return shim.Success([]byte("LC issue proposed, awaiting Issuing Bank approval"))
     }
 
-    pricingData := []byte(args[1])
-    if err := APIstub.PutPrivateData(pricingCollection, args[0], pricingData); err != nil {
-        return shim.Error(err.Error())
+    // Phase 2: Issuing Bank (Org3) approves and executes
+    if mspid == "Org3MSP" {
+        if lc.IssueProposal == nil {
+            return shim.Error("no issue proposal found, Importer must propose first")
+        }
+        if lc.IssueProposal.ApprovedBy != "" {
+            return shim.Error("issue already approved")
+        }
+
+        // Verify the pricing data matches proposal
+        pricingData := []byte(lc.IssueProposal.Data)
+
+        // Mark approval
+        lc.IssueProposal.ApprovedBy = mspid
+        lc.Status = "ISSUED"
+        lc.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+        lc.History = append(lc.History, "ISSUED")
+        if err := s.persistLC(APIstub, lc); err != nil {
+            return shim.Error(err.Error())
+        }
+
+        // Store pricing in private collection
+        if err := APIstub.PutPrivateData(pricingCollection, args[0], pricingData); err != nil {
+            return shim.Error(err.Error())
+        }
+
+        s.emitEvent(APIstub, lc.ID, "ISSUED")
+        return shim.Success([]byte("LC issued with dual endorsement"))
     }
 
-    s.emitEvent(APIstub, lc.ID, "ISSUED")
-    return shim.Success([]byte("LC issued"))
+    return shim.Error("issueLC requires Importer (Org1) proposal and Issuing Bank (Org3) approval")
 }
 
 func (s *SmartContract) adviseLC(APIstub shim.ChaincodeStubInterface, args []string) *sc.Response {
@@ -254,28 +300,68 @@ func (s *SmartContract) verifyDocuments(APIstub shim.ChaincodeStubInterface, arg
     return shim.Success([]byte("Documents verified"))
 }
 
+// releasePayment implements two-phase approval: Org2 (Exporter) proposes, Org3 (Issuing Bank) approves
+// Args: [id, paymentDetails]
 func (s *SmartContract) releasePayment(APIstub shim.ChaincodeStubInterface, args []string) *sc.Response {
     if len(args) < 2 {
         return shim.Error("releasePayment requires 2 arguments: id, paymentDetails")
     }
-    if ok, err := assertMultipleMSPs(APIstub, []string{"Org3MSP", "Org2MSP"}); err != nil || !ok {
-        return shim.Error("payment release requires Issuing Bank and Exporter endorsement")
+    mspid, err := getClientMSPID(APIstub)
+    if err != nil {
+        return shim.Error(err.Error())
     }
 
     lc, err := s.fetchLC(APIstub, args[0])
     if err != nil { return shim.Error(err.Error()) }
-    if lc.Status != "VERIFIED" {
+    if lc.Status != "VERIFIED" && lc.Status != "PAYMENT_PENDING" {
         return shim.Error("LC must be VERIFIED before payment release")
     }
 
-    lc.Status = "PAID"
-    lc.PaymentDetails = args[1]
-    lc.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
-    lc.History = append(lc.History, "PAID")
-    if err := s.persistLC(APIstub, lc); err != nil { return shim.Error(err.Error()) }
-    if err := APIstub.PutPrivateData(bankRiskCollection, args[0], []byte(args[1])); err != nil { return shim.Error(err.Error()) }
-    s.emitEvent(APIstub, lc.ID, "PAID")
-    return shim.Success([]byte("Payment released"))
+    // Phase 1: Exporter (Org2) proposes payment release
+    if mspid == "Org2MSP" {
+        if lc.PaymentProposal != nil {
+            return shim.Error("payment proposal already exists, waiting for Issuing Bank approval")
+        }
+        lc.Status = "PAYMENT_PENDING"
+        lc.PaymentProposal = &ApprovalRecord{
+            ProposedBy: mspid,
+            Timestamp:  time.Now().UTC().Format(time.RFC3339),
+            Data:       args[1],
+        }
+        lc.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+        lc.History = append(lc.History, "PAYMENT_PROPOSED")
+        if err := s.persistLC(APIstub, lc); err != nil { return shim.Error(err.Error()) }
+        s.emitEvent(APIstub, lc.ID, "PAYMENT_PROPOSED")
+        return shim.Success([]byte("Payment release proposed, awaiting Issuing Bank approval"))
+    }
+
+    // Phase 2: Issuing Bank (Org3) approves and executes
+    if mspid == "Org3MSP" {
+        if lc.PaymentProposal == nil {
+            return shim.Error("no payment proposal found, Exporter must propose first")
+        }
+        if lc.PaymentProposal.ApprovedBy != "" {
+            return shim.Error("payment already approved")
+        }
+
+        lc.PaymentProposal.ApprovedBy = mspid
+        lc.Status = "PAID"
+        lc.PaymentDetails = lc.PaymentProposal.Data
+        lc.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+        lc.History = append(lc.History, "PAID")
+        if err := s.persistLC(APIstub, lc); err != nil { return shim.Error(err.Error()) }
+
+        // Store payment details in private collection for risk data
+        paymentData := []byte(lc.PaymentProposal.Data)
+        if err := APIstub.PutPrivateData(bankRiskCollection, args[0], paymentData); err != nil {
+            return shim.Error(err.Error())
+        }
+
+        s.emitEvent(APIstub, lc.ID, "PAID")
+        return shim.Success([]byte("Payment released with dual endorsement"))
+    }
+
+    return shim.Error("releasePayment requires Exporter (Org2) proposal and Issuing Bank (Org3) approval")
 }
 
 func (s *SmartContract) amendLC(APIstub shim.ChaincodeStubInterface, args []string) *sc.Response {
@@ -411,16 +497,6 @@ func assertMSP(APIstub shim.ChaincodeStubInterface, required string) (bool, erro
     return mspid == required, nil
 }
 
-func assertMultipleMSPs(APIstub shim.ChaincodeStubInterface, required []string) (bool, error) {
-    mspid, err := getClientMSPID(APIstub)
-    if err != nil { return false, err }
-    for _, candidate := range required {
-        if mspid == candidate {
-            return true, nil
-        }
-    }
-    return false, nil
-}
 
 func parseAmount(raw string) (float64, error) {
     var amount float64
