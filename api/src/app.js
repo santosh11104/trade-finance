@@ -1,3 +1,4 @@
+const tracing = require('./tracing');
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -84,12 +85,12 @@ const start = async () => {
       console.log(`API Endpoints:`);
       console.log(`  POST /auth/login    - Authenticate user`);
       console.log(`  POST /lc/create     - Create LC (importer)`);
-      console.log(`  POST /lc/issue      - Issue LC (issuing bank)`);
+      console.log(`  POST /lc/issue      - Issue LC (importer proposes, bank approves)`);
       console.log(`  POST /lc/advise     - Advise LC (advising bank)`);
       console.log(`  POST /lc/confirm    - Confirm LC (advising bank)`);
       console.log(`  POST /lc/ship       - Submit documents (exporter)`);
       console.log(`  POST /lc/verify     - Verify documents (issuing bank)`);
-      console.log(`  POST /lc/pay        - Release payment (issuing bank)`);
+      console.log(`  POST /lc/pay        - Release payment (exporter proposes, bank approves)`);
       console.log(`  POST /lc/amend      - Amend LC (importer/bank)`);
       console.log(`  POST /lc/cancel     - Cancel LC (importer/bank)`);
       console.log(`  GET  /lc/:id        - Query LC by ID`);

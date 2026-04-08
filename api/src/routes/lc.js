@@ -14,11 +14,32 @@ router.post('/create', permit('importer', 'admin'), async (req, res) => {
   }
 });
 
-router.post('/issue', permit('bank', 'admin'), async (req, res) => {
+// Issue LC - two-phase approval flow
+// Phase 1: Importer proposes (creates ISSUE_PENDING status)
+// Phase 2: Issuing Bank approves (transitions to ISSUED status)
+router.post('/issue', permit('importer', 'bank', 'admin'), async (req, res) => {
   try {
     const { id, pricingData } = req.body;
     const result = await fabricClient.submitTransaction('issueLC', [id, pricingData]);
-    res.json({ success: true, payload: result });
+    const message = result.toString ? result.toString() : result;
+
+    // Check if this was a proposal or approval
+    if (message.includes('proposed')) {
+      res.json({
+        success: true,
+        phase: 'PROPOSAL',
+        status: 'ISSUE_PENDING',
+        message: message,
+        nextStep: 'Issuing Bank must call /lc/issue with same ID to approve'
+      });
+    } else {
+      res.json({
+        success: true,
+        phase: 'APPROVAL',
+        status: 'ISSUED',
+        message: message
+      });
+    }
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -64,11 +85,32 @@ router.post('/verify', permit('bank', 'admin'), async (req, res) => {
   }
 });
 
-router.post('/pay', permit('bank', 'admin'), async (req, res) => {
+// Release Payment - two-phase approval flow
+// Phase 1: Exporter proposes payment (creates PAYMENT_PENDING status)
+// Phase 2: Issuing Bank approves payment (transitions to PAID status)
+router.post('/pay', permit('exporter', 'bank', 'admin'), async (req, res) => {
   try {
     const { id, paymentDetails } = req.body;
     const result = await fabricClient.submitTransaction('releasePayment', [id, paymentDetails]);
-    res.json({ success: true, payload: result });
+    const message = result.toString ? result.toString() : result;
+
+    // Check if this was a proposal or approval
+    if (message.includes('proposed')) {
+      res.json({
+        success: true,
+        phase: 'PROPOSAL',
+        status: 'PAYMENT_PENDING',
+        message: message,
+        nextStep: 'Issuing Bank must call /lc/pay with same ID to approve and release payment'
+      });
+    } else {
+      res.json({
+        success: true,
+        phase: 'APPROVAL',
+        status: 'PAID',
+        message: message
+      });
+    }
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

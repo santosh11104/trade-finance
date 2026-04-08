@@ -29,9 +29,12 @@ const sdk = new NodeSDK({
 });
 
 // Start the SDK
-sdk.start()
-  .then(() => console.log('OpenTelemetry tracing initialized'))
-  .catch((error) => console.error('Error initializing OpenTelemetry:', error));
+try {
+  sdk.start();
+  console.log('OpenTelemetry tracing initialized');
+} catch (error) {
+  console.error('Error initializing OpenTelemetry:', error);
+}
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
