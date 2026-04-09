@@ -1,43 +1,229 @@
 {
   "info": {
     "name": "Trade Finance LC API",
+    "description": "Comprehensive collection for the Letter of Credit automation system lifecycle, including user management and LC flow.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
-      "name": "Login",
-      "request": {
-        "method": "POST",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"username\": \"importer1\",\n  \"password\": \"password123\"\n}"
+      "name": "User & System Management",
+      "item": [
+        {
+          "name": "Seed Database",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": { "raw": "http://localhost:4000/admin/seed", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["admin", "seed"] },
+            "description": "Seeds the database with default test users (importer1, exporter1, bank1, bank2, admin) with password 'password'"
+          }
         },
-        "url": { "raw": "http://localhost:4000/auth/login", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["auth", "login"] }
-      }
+        {
+          "name": "Register New User",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"newuser1\",\n  \"password\": \"securePassword123\",\n  \"role\": \"importer\",\n  \"orgMsp\": \"Org1MSP\"\n}"
+            },
+            "url": { "raw": "http://localhost:4000/auth/register", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["auth", "register"] },
+            "description": "Admin only: Create a new user in the system."
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"importer1\",\n  \"password\": \"password\"\n}"
+            },
+            "url": { "raw": "http://localhost:4000/auth/login", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["auth", "login"] },
+            "description": "Authenticate user to receive a JWT token."
+          }
+        }
+      ]
     },
     {
-      "name": "Create LC",
-      "request": {
-        "method": "POST",
-        "header": [
-          { "key": "Content-Type", "value": "application/json" },
-          { "key": "Authorization", "value": "Bearer {{token}}" }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"id\": \"LC1001\",\n  \"importer\": \"ImporterA\",\n  \"exporter\": \"ExporterB\",\n  \"issuingBank\": \"BankC\",\n  \"advisingBank\": \"BankD\",\n  \"amount\": 95000,\n  \"currency\": \"USD\",\n  \"expiry\": \"2026-12-31\",\n  \"terms\": \"Shipment within 30 days\"\n}"
+      "name": "LC Lifecycle",
+      "item": [
+        {
+          "name": "Create LC",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"LC1001\",\n  \"importer\": \"ImporterA\",\n  \"exporter\": \"ExporterB\",\n  \"issuingBank\": \"BankC\",\n  \"advisingBank\": \"BankD\",\n  \"amount\": 95000,\n  \"currency\": \"USD\",\n  \"expiry\": \"2026-12-31\",\n  \"terms\": \"Shipment within 30 days\"\n}"
+            },
+            "url": { "raw": "http://localhost:4000/lc/create", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "create"] }
+          }
         },
-        "url": { "raw": "http://localhost:4000/lc/create", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "create"] }
-      }
+        {
+          "name": "Issue LC (Propose/Approve)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"LC1001\",\n  \"pricingData\": \"Price: 2% commission, Term: 90 days\"\n}"
+            },
+            "url": { "raw": "http://localhost:4000/lc/issue", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "issue"] }
+          }
+        },
+        {
+          "name": "Advise LC",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"LC1001\"\n}"
+            },
+            "url": { "raw": "http://localhost:4000/lc/advise", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "advise"] }
+          }
+        },
+        {
+          "name": "Confirm LC",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"LC1001\"\n}"
+            },
+            "url": { "raw": "http://localhost:4000/lc/confirm", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "confirm"] }
+          }
+        },
+        {
+          "name": "Submit Shipment Documents",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"LC1001\",\n  \"documentsHash\": \"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n}"
+            },
+            "url": { "raw": "http://localhost:4000/lc/ship", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "ship"] }
+          }
+        },
+        {
+          "name": "Verify Documents",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"LC1001\"\n}"
+            },
+            "url": { "raw": "http://localhost:4000/lc/verify", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "verify"] }
+          }
+        },
+        {
+          "name": "Release Payment (Propose/Approve)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"LC1001\",\n  \"paymentDetails\": \"SWIFT: BANKUS33, Amount: 95000 USD\"\n}"
+            },
+            "url": { "raw": "http://localhost:4000/lc/pay", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "pay"] }
+          }
+        },
+        {
+          "name": "Amend LC",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"LC1001\",\n  \"amendmentNote\": \"Extend expiry to 2027-01-15\"\n}"
+            },
+            "url": { "raw": "http://localhost:4000/lc/amend", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "amend"] }
+          }
+        },
+        {
+          "name": "Cancel LC",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"LC1001\"\n}"
+            },
+            "url": { "raw": "http://localhost:4000/lc/cancel", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "cancel"] }
+          }
+        }
+      ]
     },
     {
-      "name": "Query LC",
-      "request": {
-        "method": "GET",
-        "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-        "url": { "raw": "http://localhost:4000/lc/LC1001", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "LC1001"] }
-      }
+      "name": "LC Queries",
+      "item": [
+        {
+          "name": "List All LCs",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "http://localhost:4000/lc?status=ISSUED",
+              "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc"],
+              "query": [{ "key": "status", "value": "ISSUED" }]
+            }
+          }
+        },
+        {
+          "name": "Get LC Details",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "http://localhost:4000/lc/LC1001", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "LC1001"] }
+          }
+        },
+        {
+          "name": "Get LC History",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "http://localhost:4000/lc/LC1001/history", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "LC1001", "history"] }
+          }
+        }
+      ]
     }
   ]
 }
