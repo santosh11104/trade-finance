@@ -2,8 +2,9 @@ const tracing = require('./tracing');
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const bcrypt = require('bcryptjs');
 const config = require('./config');
-const { signToken, authorize } = require('./auth');
+const { signToken, authorize, permit } = require('./auth');
 const db = require('./db');
 const lcRoutes = require('./routes/lc');
 const eventListener = require('./eventListener');
@@ -50,6 +51,65 @@ app.post('/admin/seed', async (req, res) => {
   }
 });
 
+// User registration (admin only)
+app.post('/auth/register', authorize, permit('admin'), async (req, res) => {
+  const { username, password, role, orgMsp } = req.body;
+
+  // Validate required fields
+  if (!username || !password || !role || !orgMsp) {
+    return res.status(400).json({
+      error: 'username, password, role, and orgMsp are required',
+      validRoles: ['importer', 'exporter', 'bank', 'admin'],
+      validOrgs: ['Org1MSP', 'Org2MSP', 'Org3MSP', 'Org4MSP']
+    });
+  }
+
+  // Validate role
+  const validRoles = ['importer', 'exporter', 'bank', 'admin'];
+  if (!validRoles.includes(role)) {
+    return res.status(400).json({
+      error: 'invalid role',
+      validRoles
+    });
+  }
+
+  // Validate org MSP
+  const validOrgs = ['Org1MSP', 'Org2MSP', 'Org3MSP', 'Org4MSP'];
+  if (!validOrgs.includes(orgMsp)) {
+    return res.status(400).json({
+      error: 'invalid orgMsp',
+      validOrgs
+    });
+  }
+
+  // Validate password strength
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'password must be at least 8 characters' });
+  }
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    const result = await db.query(
+      'INSERT INTO users (username, password_hash, role, org_msp) VALUES ($1, $2, $3, $4) RETURNING username, role, org_msp',
+      [username, passwordHash, role, orgMsp]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'user created successfully',
+      user: result.rows[0]
+    });
+  } catch (err) {
+    if (err.code === '23505') { // Unique violation
+      return res.status(409).json({ error: 'username already exists' });
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// User login
 app.post('/auth/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
@@ -57,11 +117,18 @@ app.post('/auth/login', async (req, res) => {
   }
 
   try {
-    const userResult = await db.query('SELECT username, role, org_msp FROM users WHERE username=$1', [username]);
+    const userResult = await db.query('SELECT username, password_hash, role, org_msp FROM users WHERE username=$1', [username]);
     if (!userResult.rows.length) {
       return res.status(401).json({ error: 'invalid credentials' });
     }
     const user = userResult.rows[0];
+
+    // Verify password against hash
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: 'invalid credentials' });
+    }
+
     const token = signToken({ username: user.username, role: user.role, orgMsp: user.org_msp });
     res.json({ token });
   } catch (err) {
