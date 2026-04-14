@@ -45,9 +45,22 @@ app.post('/admin/seed', async (req, res) => {
         [user.username, passwordHash, user.role, user.org]
       );
       try {
-        await caClient.registerAndEnrollUser(user.username, user.role, user.org);
+        // For the seed endpoint, we use a fixed enrollment secret 'password' to allow re-enrollment 
+        // if the wallet file is missing but the identity already exists on the CA.
+        const enrollmentSecret = 'password';
+        try {
+          await caClient.registerAndEnrollUser(user.username, user.role, user.org, enrollmentSecret);
+        } catch (caErr) {
+          // If already registered, try to re-enroll with the fixed password
+          if (caErr.code === 'ALREADY_REGISTERED') {
+            console.log(`User ${user.username} already registered on CA, attempting re-enrollment...`);
+            await caClient.enrollUser(user.username, enrollmentSecret, user.org);
+          } else {
+            throw caErr;
+          }
+        }
       } catch (caErr) {
-        console.warn(`CA registration failed for ${user.username}: ${caErr.message}`);
+        console.warn(`Fabric identity setup failed for ${user.username}: ${caErr.message}`);
       }
     }
 

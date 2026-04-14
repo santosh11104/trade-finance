@@ -1,4 +1,3 @@
-const { Wallets } = require('fabric-network');
 const fs = require('fs');
 const path = require('path');
 
@@ -6,11 +5,14 @@ const walletPath = path.resolve(__dirname, 'wallet');
 const cryptoConfigPath = path.resolve(__dirname, '../blockchain-api/network/crypto-config/peerOrganizations/org1.example.com/users/User1@org1.example.com');
 
 async function createWallet() {
-  const wallet = await Wallets.newFileSystemWallet(walletPath);
+  if (!fs.existsSync(walletPath)) {
+    fs.mkdirSync(walletPath, { recursive: true });
+  }
+
+  const idPath = path.join(walletPath, 'appUser.id');
 
   // Check if identity already exists
-  const identity = await wallet.get('appUser');
-  if (identity) {
+  if (fs.existsSync(idPath)) {
     console.log('Identity appUser already exists in wallet');
     return;
   }
@@ -18,6 +20,12 @@ async function createWallet() {
   // Read the certificate and private key
   const certPath = path.join(cryptoConfigPath, 'msp/signcerts/User1@org1.example.com-cert.pem');
   const keyDir = path.join(cryptoConfigPath, 'msp/keystore');
+  
+  if (!fs.existsSync(certPath) || !fs.existsSync(keyDir)) {
+    console.log('Identity files not found at expected paths. Skipping wallet creation.');
+    return;
+  }
+
   const keyFiles = fs.readdirSync(keyDir);
   const keyPath = path.join(keyDir, keyFiles[0]); // There should be only one private key file
 
@@ -31,9 +39,10 @@ async function createWallet() {
     },
     mspId: 'Org1MSP',
     type: 'X.509',
+    version: 1
   };
 
-  await wallet.put('appUser', x509Identity);
+  fs.writeFileSync(idPath, JSON.stringify(x509Identity));
   console.log('Identity appUser imported to wallet successfully');
 }
 

@@ -1,8 +1,5 @@
-const { Wallets, Gateway } = require('fabric-network');
 const config = require('./config');
 const db = require('./db');
-const fs = require('fs');
-const path = require('path');
 
 async function startEventListener() {
   // Event listening requires peer event service access which often has
