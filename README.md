@@ -71,6 +71,7 @@ After running `start-all.sh`, the following services are available:
 | **Prometheus** | 9090 | http://localhost:9090 | Metrics collection |
 | **Jaeger** | 16686 | http://localhost:16686 | Distributed tracing |
 | **cAdvisor** | 8081 | http://localhost:8081 | Container metrics |
+| **API Swagger** | 4000 | http://localhost:4000/api-docs | Interactive API documentation |
 
 ### API startup is manual
 
@@ -90,6 +91,19 @@ Or run the API with an explicit database URL:
 cd api
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/tradefinance npm start
 ```
+
+### Interactive API Documentation (Swagger)
+
+The API includes built-in Swagger documentation for interactive testing.
+
+- **URL:** [http://localhost:4000/api-docs](http://localhost:4000/api-docs)
+- **Instructions:**
+  1. Start the API (`npm start` in the `api` directory).
+  2. Open the Swagger URL in your browser.
+  3. Use the **Auth > /auth/login** endpoint with credentials (e.g., `importer1`/`password`) to obtain a JWT token.
+  4. Click the **Authorize** button at the top of the page.
+  5. Enter the token in the value field (e.g., just the token string).
+  6. You can now test all LC lifecycle endpoints directly from the UI.
 
 ## API Endpoints
 
@@ -114,6 +128,20 @@ Certain critical operations require **dual endorsement** for security:
 |-----------|-------------------|-------------------|--------------|
 | `/lc/issue` | Importer (Org1) submits pricing | Issuing Bank (Org3) approves | `ISSUED` |
 | `/lc/pay` | Exporter (Org2) requests payment | Issuing Bank (Org3) approves | `PAID` |
+
+### Current LC Workflow Summary
+
+| Step | Action | Status Result | Actor |
+| :--- | :--- | :--- | :--- |
+| 1 | `POST /lc/create` | `CREATED` | Importer (Org1) |
+| 2 | `POST /lc/issue` (Phase 1) | `ISSUE_PENDING` | Importer (Org1) |
+| 3 | `POST /lc/issue` (Phase 2) | `ISSUED` | Issuing Bank (Org3) |
+| 4 | `POST /lc/advise` | `ADVISED` | Advising Bank (Org4) |
+| 5 | `POST /lc/confirm` | `CONFIRMED` | Confirming Bank (Org4) |
+| 6 | `POST /lc/ship` | `SHIPPED` | Exporter (Org2) |
+| 7 | `POST /lc/verify` | `VERIFIED` | Issuing Bank (Org3) |
+| 8 | `POST /lc/pay` (Phase 1) | `PAYMENT_PENDING` | Exporter (Org2) |
+| 9 | `POST /lc/pay` (Phase 2) | `PAID` | Issuing Bank (Org3) |
 
 **Intermediate States:**
 - `ISSUE_PENDING` - Waiting for issuing bank approval

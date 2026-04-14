@@ -82,7 +82,8 @@
               "mode": "raw",
               "raw": "{\n  \"id\": \"LC1001\",\n  \"importer\": \"ImporterA\",\n  \"exporter\": \"ExporterB\",\n  \"issuingBank\": \"BankC\",\n  \"advisingBank\": \"BankD\",\n  \"amount\": 95000,\n  \"currency\": \"USD\",\n  \"expiry\": \"2026-12-31\",\n  \"terms\": \"Shipment within 30 days\"\n}"
             },
-            "url": { "raw": "http://localhost:4000/lc/create", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "create"] }
+            "url": { "raw": "http://localhost:4000/lc/create", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "create"] },
+            "description": "Status: CREATED. Initiated by Importer (Org1)."
           }
         },
         {
@@ -97,7 +98,8 @@
               "mode": "raw",
               "raw": "{\n  \"id\": \"LC1001\",\n  \"pricingData\": \"Price: 2% commission, Term: 90 days\"\n}"
             },
-            "url": { "raw": "http://localhost:4000/lc/issue", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "issue"] }
+            "url": { "raw": "http://localhost:4000/lc/issue", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "issue"] },
+            "description": "Two-phase: \n1. Importer (Org1) proposes -> Status: ISSUE_PENDING\n2. Issuing Bank (Org3) approves -> Status: ISSUED"
           }
         },
         {
@@ -112,7 +114,8 @@
               "mode": "raw",
               "raw": "{\n  \"id\": \"LC1001\"\n}"
             },
-            "url": { "raw": "http://localhost:4000/lc/advise", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "advise"] }
+            "url": { "raw": "http://localhost:4000/lc/advise", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "advise"] },
+            "description": "Status: ADVISED. Performed by Advising Bank (Org4)."
           }
         },
         {
@@ -127,7 +130,8 @@
               "mode": "raw",
               "raw": "{\n  \"id\": \"LC1001\"\n}"
             },
-            "url": { "raw": "http://localhost:4000/lc/confirm", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "confirm"] }
+            "url": { "raw": "http://localhost:4000/lc/confirm", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "confirm"] },
+            "description": "Status: CONFIRMED. Performed by Confirming Bank (Org4)."
           }
         },
         {
@@ -142,7 +146,8 @@
               "mode": "raw",
               "raw": "{\n  \"id\": \"LC1001\",\n  \"documentsHash\": \"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n}"
             },
-            "url": { "raw": "http://localhost:4000/lc/ship", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "ship"] }
+            "url": { "raw": "http://localhost:4000/lc/ship", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "ship"] },
+            "description": "Status: SHIPPED. Performed by Exporter (Org2). Documents stored in private data collection."
           }
         },
         {
@@ -157,7 +162,8 @@
               "mode": "raw",
               "raw": "{\n  \"id\": \"LC1001\"\n}"
             },
-            "url": { "raw": "http://localhost:4000/lc/verify", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "verify"] }
+            "url": { "raw": "http://localhost:4000/lc/verify", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "verify"] },
+            "description": "Status: VERIFIED. Performed by Issuing Bank (Org3)."
           }
         },
         {
@@ -172,7 +178,8 @@
               "mode": "raw",
               "raw": "{\n  \"id\": \"LC1001\",\n  \"paymentDetails\": \"SWIFT: BANKUS33, Amount: 95000 USD\"\n}"
             },
-            "url": { "raw": "http://localhost:4000/lc/pay", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "pay"] }
+            "url": { "raw": "http://localhost:4000/lc/pay", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "pay"] },
+            "description": "Two-phase: \n1. Exporter (Org2) proposes -> Status: PAYMENT_PENDING\n2. Issuing Bank (Org3) approves -> Status: PAID"
           }
         },
         {
@@ -187,7 +194,8 @@
               "mode": "raw",
               "raw": "{\n  \"id\": \"LC1001\",\n  \"amendmentNote\": \"Extend expiry to 2027-01-15\"\n}"
             },
-            "url": { "raw": "http://localhost:4000/lc/amend", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "amend"] }
+            "url": { "raw": "http://localhost:4000/lc/amend", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "amend"] },
+            "description": "Status: ISSUED (reset for re-advising). Performed by Importer/Bank."
           }
         },
         {
@@ -202,7 +210,8 @@
               "mode": "raw",
               "raw": "{\n  \"id\": \"LC1001\"\n}"
             },
-            "url": { "raw": "http://localhost:4000/lc/cancel", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "cancel"] }
+            "url": { "raw": "http://localhost:4000/lc/cancel", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "cancel"] },
+            "description": "Status: CANCELLED. Terminal state."
           }
         }
       ]

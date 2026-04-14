@@ -10,7 +10,7 @@ module.exports = {
   port: process.env.PORT || 4000,
   jwtSecret: process.env.JWT_SECRET || 'supersecretkey',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1h',
-  dbUrl: process.env.DATABASE_URL || 'postgres://postgres:postgres@postgres:5432/tradefinance',
+  dbUrl: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/tradefinance',
   fabric: {
     walletPath: process.env.FABRIC_WALLET_PATH || path.resolve(__dirname, '../wallet'),
     connectionProfile: path.resolve(__dirname, '../../blockchain-api/config/connection-profile.json'),

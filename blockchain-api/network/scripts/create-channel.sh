@@ -8,6 +8,7 @@ DOCKER_NETWORK=tradefinance
 CHANNEL_NAME=tradechannel
 ORDERER_ADDRESS=orderer.example.com:7050
 CHANNEL_TX=./channel-artifacts/channel.tx
+ORDERER_CA=/workspace/blockchain-api/network/crypto-config/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem
 
 function run_peer() {
   docker run --rm -u "${USER_ID}" \
@@ -41,9 +42,9 @@ function createChannel() {
   fi
 
   echo "Creating channel block with ${PEER}"
-  if ! run_peer channel create -o ${ORDERER_ADDRESS} -c ${CHANNEL_NAME} -f ${CHANNEL_TX} --outputBlock ./channel-artifacts/${CHANNEL_NAME}.block --tls --cafile /workspace/blockchain-api/network/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem; then
+  if ! run_peer channel create -o ${ORDERER_ADDRESS} -c ${CHANNEL_NAME} -f ${CHANNEL_TX} --outputBlock ./channel-artifacts/${CHANNEL_NAME}.block --tls --cafile ${ORDERER_CA}; then
     echo "Channel already exists or create failed; fetching block instead"
-    run_peer channel fetch 0 ./channel-artifacts/${CHANNEL_NAME}.block -o ${ORDERER_ADDRESS} -c ${CHANNEL_NAME} --tls --cafile /workspace/blockchain-api/network/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+    run_peer channel fetch 0 ./channel-artifacts/${CHANNEL_NAME}.block -o ${ORDERER_ADDRESS} -c ${CHANNEL_NAME} --tls --cafile ${ORDERER_CA}
   fi
 }
 

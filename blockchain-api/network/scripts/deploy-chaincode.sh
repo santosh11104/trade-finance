@@ -10,7 +10,7 @@ CHAINCODE_PATH=/workspace/chaincode/lc
 CHAINCODE_PACKAGE=./chaincode-package/lccontract.tar.gz
 DOCKER_NETWORK=tradefinance
 ORDERER_ADDRESS=orderer.example.com:7050
-ORDERER_TLS_CA=/workspace/blockchain-api/network/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+ORDERER_TLS_CA=/workspace/blockchain-api/network/crypto-config/ordererOrganizations/example.com/tlsca/tlsca.example.com-cert.pem
 USER_ID="$(id -u):$(id -g)"
 
 mkdir -p "${ROOT_DIR}/blockchain-api/network/chaincode-package"

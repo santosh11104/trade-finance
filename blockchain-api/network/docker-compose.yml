@@ -14,7 +14,7 @@ services:
       - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/priv_sk
     ports:
       - 7054:7054
-    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    command: sh -c 'fabric-ca-server start -b ${FABRIC_CA_ADMIN:-admin}:${FABRIC_CA_ADMIN_PW:-adminpw} -d'
     volumes:
       - ./crypto-config/peerOrganizations/org1.example.com/ca:/etc/hyperledger/fabric-ca-server-config
 
@@ -33,7 +33,7 @@ services:
       - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/priv_sk
     ports:
       - 8054:7054
-    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    command: sh -c 'fabric-ca-server start -b ${FABRIC_CA_ADMIN:-admin}:${FABRIC_CA_ADMIN_PW:-adminpw} -d'
     volumes:
       - ./crypto-config/peerOrganizations/org2.example.com/ca:/etc/hyperledger/fabric-ca-server-config
 
@@ -52,7 +52,7 @@ services:
       - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/priv_sk
     ports:
       - 9054:7054
-    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    command: sh -c 'fabric-ca-server start -b ${FABRIC_CA_ADMIN:-admin}:${FABRIC_CA_ADMIN_PW:-adminpw} -d'
     volumes:
       - ./crypto-config/peerOrganizations/org3.example.com/ca:/etc/hyperledger/fabric-ca-server-config
 
@@ -71,7 +71,7 @@ services:
       - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/priv_sk
     ports:
       - 10054:7054
-    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    command: sh -c 'fabric-ca-server start -b ${FABRIC_CA_ADMIN:-admin}:${FABRIC_CA_ADMIN_PW:-adminpw} -d'
     volumes:
       - ./crypto-config/peerOrganizations/org4.example.com/ca:/etc/hyperledger/fabric-ca-server-config
 
@@ -109,8 +109,8 @@ services:
     networks:
       - tradefinance
     environment:
-      - COUCHDB_USER=admin
-      - COUCHDB_PASSWORD=adminpw
+      - COUCHDB_USER=${COUCHDB_USER:-admin}
+      - COUCHDB_PASSWORD=${COUCHDB_PASSWORD:-adminpw}
     ports:
       - 5984:5984
     volumes:
@@ -142,8 +142,8 @@ services:
       - CORE_PEER_PROFILE_ENABLED=true
       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0.org1:5984
-      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
-      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=${COUCHDB_USER:-admin}
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=${COUCHDB_PASSWORD:-adminpw}
     ports:
       - 7051:7051
       - 7053:7053
@@ -164,8 +164,8 @@ services:
     networks:
       - tradefinance
     environment:
-      - COUCHDB_USER=admin
-      - COUCHDB_PASSWORD=adminpw
+      - COUCHDB_USER=${COUCHDB_USER:-admin}
+      - COUCHDB_PASSWORD=${COUCHDB_PASSWORD:-adminpw}
     ports:
       - 6984:5984
     volumes:
@@ -197,8 +197,8 @@ services:
       - CORE_PEER_PROFILE_ENABLED=true
       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0.org2:5984
-      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
-      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=${COUCHDB_USER:-admin}
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=${COUCHDB_PASSWORD:-adminpw}
     ports:
       - 8051:8051
       - 8053:8053
@@ -219,8 +219,8 @@ services:
     networks:
       - tradefinance
     environment:
-      - COUCHDB_USER=admin
-      - COUCHDB_PASSWORD=adminpw
+      - COUCHDB_USER=${COUCHDB_USER:-admin}
+      - COUCHDB_PASSWORD=${COUCHDB_PASSWORD:-adminpw}
     ports:
       - 7984:5984
     volumes:
@@ -252,8 +252,8 @@ services:
       - CORE_PEER_PROFILE_ENABLED=true
       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0.org3:5984
-      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
-      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=${COUCHDB_USER:-admin}
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=${COUCHDB_PASSWORD:-adminpw}
     ports:
       - 9051:9051
       - 9053:9053
@@ -274,8 +274,8 @@ services:
     networks:
       - tradefinance
     environment:
-      - COUCHDB_USER=admin
-      - COUCHDB_PASSWORD=adminpw
+      - COUCHDB_USER=${COUCHDB_USER:-admin}
+      - COUCHDB_PASSWORD=${COUCHDB_PASSWORD:-adminpw}
     ports:
       - 8984:5984
     volumes:
@@ -307,8 +307,8 @@ services:
       - CORE_PEER_PROFILE_ENABLED=true
       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0.org4:5984
-      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
-      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=${COUCHDB_USER:-admin}
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=${COUCHDB_PASSWORD:-adminpw}
     ports:
       - 10051:10051
       - 10053:10053
@@ -329,9 +329,9 @@ services:
     networks:
       - tradefinance
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=tradefinance
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-tradefinance}
     ports:
       - 5432:5432
     volumes:
@@ -347,9 +347,9 @@ services:
     container_name: explorerdb.mynetwork.com
     hostname: explorerdb.mynetwork.com
     environment:
-      - POSTGRES_DB=fabricexplorer
-      - POSTGRES_USER=hppoc
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=${EXPLORER_DB_NAME:-fabricexplorer}
+      - POSTGRES_USER=${EXPLORER_DB_USER:-hppoc}
+      - POSTGRES_PASSWORD=${EXPLORER_DB_PASSWORD:-password}
     volumes:
       - pgdataexplorer:/var/lib/postgresql/data
     networks:
@@ -366,9 +366,9 @@ services:
     hostname: explorer.mynetwork.com
     environment:
       - DATABASE_HOST=explorerdb.mynetwork.com
-      - DATABASE_DATABASE=fabricexplorer
-      - DATABASE_USERNAME=hppoc
-      - DATABASE_PASSWORD=password
+      - DATABASE_DATABASE=${EXPLORER_DB_NAME:-fabricexplorer}
+      - DATABASE_USERNAME=${EXPLORER_DB_USER:-hppoc}
+      - DATABASE_PASSWORD=${EXPLORER_DB_PASSWORD:-password}
       - DATABASE_PORT=5432
       - LOG_LEVEL_APP=debug
       - LOG_LEVEL_DB=debug
@@ -456,8 +456,8 @@ services:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
     ports:
       - 3000:3000

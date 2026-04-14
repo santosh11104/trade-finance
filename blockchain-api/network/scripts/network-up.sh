@@ -7,7 +7,7 @@ COMPOSE_FILE="${NETWORK_DIR}/docker-compose.yml"
 export FABRIC_CFG_PATH="${NETWORK_DIR}/config"
 
 function docker_compose() {
-  docker compose -f "${COMPOSE_FILE}" "$@" || docker-compose -f "${COMPOSE_FILE}" "$@"
+  docker compose --env-file "${ROOT_DIR}/.env" -f "${COMPOSE_FILE}" "$@" || docker-compose --env-file "${ROOT_DIR}/.env" -f "${COMPOSE_FILE}" "$@"
 }
 
 USER_ID="$(id -u):$(id -g)"

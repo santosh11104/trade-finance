@@ -47,7 +47,7 @@ function wait_for_peer() {
 cd "${NETWORK_DIR}"
 
 echo "==> Starting PostgreSQL"
-docker compose up -d postgres
+docker compose --env-file "${ROOT_DIR}/.env" up -d postgres
 
 wait_for_container tradefinance-postgres
 
@@ -84,7 +84,7 @@ cd "${ROOT_DIR}/api" && node create-wallet.js
 
 echo "==> Starting monitoring and observability services"
 cd "${NETWORK_DIR}"
-docker compose up -d prometheus grafana jaeger explorerdb.mynetwork.com explorer.mynetwork.com
+docker compose --env-file "${ROOT_DIR}/.env" up -d prometheus grafana jaeger explorerdb.mynetwork.com explorer.mynetwork.com
 
 echo "Waiting for services to initialize..."
 sleep 10
