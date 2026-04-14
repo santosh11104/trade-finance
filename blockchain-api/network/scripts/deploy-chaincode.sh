@@ -6,7 +6,7 @@ WORKDIR=/workspace/blockchain-api/network
 CHANNEL_NAME=tradechannel
 CHAINCODE_NAME=lccontract
 CHAINCODE_LABEL=lccontract_1
-CHAINCODE_PATH=../../chaincode/lc
+CHAINCODE_PATH=/workspace/chaincode/lc
 CHAINCODE_PACKAGE=./chaincode-package/lccontract.tar.gz
 DOCKER_NETWORK=tradefinance
 ORDERER_ADDRESS=orderer.example.com:7050
@@ -69,7 +69,6 @@ function approve_chaincode() {
 
   echo "Approving chaincode for ${MSP} at ${PEER_HOST}"
   run_peer lifecycle chaincode approveformyorg \
-    --orderer ${ORDERER_ADDRESS} \
     --channelID ${CHANNEL_NAME} \
     --name ${CHAINCODE_NAME} \
     --version 1.0 \

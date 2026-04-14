@@ -7,7 +7,7 @@ const db = require('../db');
 router.post('/create', permit('importer', 'admin'), async (req, res) => {
   try {
     const { id, importer, exporter, issuingBank, advisingBank, amount, currency, expiry, terms } = req.body;
-    const result = await fabricClient.submitTransaction('createLC', [id, importer, exporter, issuingBank, advisingBank, amount.toString(), currency, expiry, terms]);
+    const result = await fabricClient.submitTransaction('createLC', [id, importer, exporter, issuingBank, advisingBank, amount.toString(), currency, expiry, terms], req.user.username);
     res.json({ success: true, payload: result });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -20,7 +20,7 @@ router.post('/create', permit('importer', 'admin'), async (req, res) => {
 router.post('/issue', permit('importer', 'bank', 'admin'), async (req, res) => {
   try {
     const { id, pricingData } = req.body;
-    const result = await fabricClient.submitTransaction('issueLC', [id, pricingData]);
+    const result = await fabricClient.submitTransaction('issueLC', [id, pricingData], req.user.username);
     const message = result.toString ? result.toString() : result;
 
     // Check if this was a proposal or approval
@@ -48,7 +48,7 @@ router.post('/issue', permit('importer', 'bank', 'admin'), async (req, res) => {
 router.post('/advise', permit('bank', 'admin'), async (req, res) => {
   try {
     const { id } = req.body;
-    const result = await fabricClient.submitTransaction('adviseLC', [id]);
+    const result = await fabricClient.submitTransaction('adviseLC', [id], req.user.username);
     res.json({ success: true, payload: result });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -58,7 +58,7 @@ router.post('/advise', permit('bank', 'admin'), async (req, res) => {
 router.post('/confirm', permit('bank', 'admin'), async (req, res) => {
   try {
     const { id } = req.body;
-    const result = await fabricClient.submitTransaction('confirmLC', [id]);
+    const result = await fabricClient.submitTransaction('confirmLC', [id], req.user.username);
     res.json({ success: true, payload: result });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -68,7 +68,7 @@ router.post('/confirm', permit('bank', 'admin'), async (req, res) => {
 router.post('/ship', permit('exporter', 'admin'), async (req, res) => {
   try {
     const { id, documentsHash } = req.body;
-    const result = await fabricClient.submitTransaction('submitDocuments', [id, documentsHash]);
+    const result = await fabricClient.submitTransaction('submitDocuments', [id, documentsHash], req.user.username);
     res.json({ success: true, payload: result });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -78,7 +78,7 @@ router.post('/ship', permit('exporter', 'admin'), async (req, res) => {
 router.post('/verify', permit('bank', 'admin'), async (req, res) => {
   try {
     const { id } = req.body;
-    const result = await fabricClient.submitTransaction('verifyDocuments', [id]);
+    const result = await fabricClient.submitTransaction('verifyDocuments', [id], req.user.username);
     res.json({ success: true, payload: result });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -91,7 +91,7 @@ router.post('/verify', permit('bank', 'admin'), async (req, res) => {
 router.post('/pay', permit('exporter', 'bank', 'admin'), async (req, res) => {
   try {
     const { id, paymentDetails } = req.body;
-    const result = await fabricClient.submitTransaction('releasePayment', [id, paymentDetails]);
+    const result = await fabricClient.submitTransaction('releasePayment', [id, paymentDetails], req.user.username);
     const message = result.toString ? result.toString() : result;
 
     // Check if this was a proposal or approval
@@ -119,7 +119,7 @@ router.post('/pay', permit('exporter', 'bank', 'admin'), async (req, res) => {
 router.post('/amend', permit('importer', 'bank', 'admin'), async (req, res) => {
   try {
     const { id, amendmentNote } = req.body;
-    const result = await fabricClient.submitTransaction('amendLC', [id, amendmentNote]);
+    const result = await fabricClient.submitTransaction('amendLC', [id, amendmentNote], req.user.username);
     res.json({ success: true, payload: result });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -129,7 +129,7 @@ router.post('/amend', permit('importer', 'bank', 'admin'), async (req, res) => {
 router.post('/cancel', permit('importer', 'bank', 'admin'), async (req, res) => {
   try {
     const { id } = req.body;
-    const result = await fabricClient.submitTransaction('cancelLC', [id]);
+    const result = await fabricClient.submitTransaction('cancelLC', [id], req.user.username);
     res.json({ success: true, payload: result });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -156,7 +156,7 @@ router.get('/', permit('importer', 'exporter', 'bank', 'admin'), async (req, res
 
 router.get('/:id', permit('importer', 'exporter', 'bank', 'admin'), async (req, res) => {
   try {
-    const result = await fabricClient.evaluateTransaction('queryLC', [req.params.id]);
+    const result = await fabricClient.evaluateTransaction('queryLC', [req.params.id], req.user.username);
     res.json({ success: true, payload: JSON.parse(result) });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -165,7 +165,7 @@ router.get('/:id', permit('importer', 'exporter', 'bank', 'admin'), async (req, 
 
 router.get('/:id/history', permit('importer', 'exporter', 'bank', 'admin'), async (req, res) => {
   try {
-    const result = await fabricClient.evaluateTransaction('getLCStatusHistory', [req.params.id]);
+    const result = await fabricClient.evaluateTransaction('getLCStatusHistory', [req.params.id], req.user.username);
     res.json({ success: true, payload: JSON.parse(result) });
   } catch (err) {
     res.status(400).json({ error: err.message });

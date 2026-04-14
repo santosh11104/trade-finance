@@ -18,7 +18,7 @@
               "raw": "{}"
             },
             "url": { "raw": "http://localhost:4000/admin/seed", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["admin", "seed"] },
-            "description": "Seeds the database with default test users (importer1, exporter1, bank1, bank2, admin) with password 'password'"
+            "description": "Seeds the database with default test users (importer1, exporter1, bank1, bank2, admin) and automatically registers/enrolls them with the Fabric Certificate Authority (CA)."
           }
         },
         {
@@ -34,11 +34,26 @@
               "raw": "{\n  \"username\": \"newuser1\",\n  \"password\": \"securePassword123\",\n  \"role\": \"importer\",\n  \"orgMsp\": \"Org1MSP\"\n}"
             },
             "url": { "raw": "http://localhost:4000/auth/register", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["auth", "register"] },
-            "description": "Admin only: Create a new user in the system."
+            "description": "Admin only: Create a new user in the database and provision a unique X.509 certificate and private key via the Fabric CA."
           }
         },
         {
           "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.token) {",
+                  "    pm.collectionVariables.set(\"token\", jsonData.token);",
+                  "    console.log(\"Token has been updated in collection variables\");",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
@@ -47,7 +62,7 @@
               "raw": "{\n  \"username\": \"importer1\",\n  \"password\": \"password\"\n}"
             },
             "url": { "raw": "http://localhost:4000/auth/login", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["auth", "login"] },
-            "description": "Authenticate user to receive a JWT token."
+            "description": "Authenticate user to receive a JWT token. The token is automatically saved to the 'token' variable for subsequent requests."
           }
         }
       ]

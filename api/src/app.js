@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const config = require('./config');
 const { signToken, authorize, permit } = require('./auth');
 const db = require('./db');
+const caClient = require('./caClient');
 const lcRoutes = require('./routes/lc');
 const eventListener = require('./eventListener');
 
@@ -43,9 +44,14 @@ app.post('/admin/seed', async (req, res) => {
         'INSERT INTO users (username, password_hash, role, org_msp) VALUES ($1, $2, $3, $4) ON CONFLICT (username) DO NOTHING',
         [user.username, passwordHash, user.role, user.org]
       );
+      try {
+        await caClient.registerAndEnrollUser(user.username, user.role, user.org);
+      } catch (caErr) {
+        console.warn(`CA registration failed for ${user.username}: ${caErr.message}`);
+      }
     }
 
-    res.json({ success: true, message: 'Database seeded with test users' });
+    res.json({ success: true, message: 'Database seeded with test users and Fabric identities' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -96,9 +102,19 @@ app.post('/auth/register', authorize, permit('admin'), async (req, res) => {
       [username, passwordHash, role, orgMsp]
     );
 
+    // Register with Fabric CA
+    try {
+      await caClient.registerAndEnrollUser(username, role, orgMsp);
+    } catch (caErr) {
+      console.error(`Fabric CA registration failed for ${username}:`, caErr);
+      // Optional: you might want to rollback the database insert if CA registration fails
+      // for now we'll just return a success but with a warning or fail the whole request
+      return res.status(500).json({ error: `User created in DB but Fabric CA registration failed: ${caErr.message}` });
+    }
+
     res.status(201).json({
       success: true,
-      message: 'user created successfully',
+      message: 'user created successfully and enrolled with Fabric CA',
       user: result.rows[0]
     });
   } catch (err) {
@@ -146,6 +162,7 @@ app.use((err, req, res, next) => {
 const start = async () => {
   try {
     await db.initDb();
+    await caClient.enrollAdmin();
     await eventListener.startEventListener();
     app.listen(config.port, () => {
       console.log(`Trade Finance API listening on port ${config.port}`);

@@ -3,6 +3,7 @@ package main
 import (
     "encoding/json"
     "fmt"
+    "os"
     "time"
 
     "github.com/hyperledger/fabric-chaincode-go/v2/shim"
@@ -513,6 +514,7 @@ func parseAmount(raw string) (float64, error) {
 func main() {
     err := shim.Start(new(SmartContract))
     if err != nil {
-        fmt.Printf("Error starting LC chaincode: %s", err)
+        fmt.Printf("Error starting LC chaincode: %s\\n", err)
+        os.Exit(1)
     }
 }

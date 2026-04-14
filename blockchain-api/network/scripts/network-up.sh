@@ -43,16 +43,6 @@ sleep 5
 echo "==> Bring up Fabric CA servers and peers"
 docker_compose up -d ca_org1 ca_org2 ca_org3 ca_org4 orderer.example.com peer0.org1.example.com peer0.org2.example.com peer0.org3.example.com peer0.org4.example.com
 
-# Ensure tradefinance network exists and all containers are connected
-echo "==> Ensuring tradefinance network is configured..."
-docker network inspect tradefinance >/dev/null 2>&1 || docker network create tradefinance
-
-# Connect containers to tradefinance network if not already connected
-for container in orderer.example.com peer0.org1.example.com peer0.org2.example.com peer0.org3.example.com peer0.org4.example.com; do
-  if ! docker network inspect tradefinance | grep -q "${container}"; then
-    docker network connect tradefinance "${container}" 2>/dev/null || true
-  fi
-done
 
 echo "==> Network is starting. Use scripts/create-channel.sh to join peers to channel."
 

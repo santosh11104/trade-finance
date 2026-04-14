@@ -14,7 +14,7 @@ docker run --rm \
   --network host \
   -v "${NETWORK_DIR}/crypto-config/peerOrganizations/org1.example.com/ca:/ca-certs" \
   -v "${WALLET_DIR}:/wallet" \
-  hyperledger/fabric-ca-client:1.5 \
+  hyperledger/fabric-ca:1.5 \
   fabric-ca-client enroll \
     -u https://admin:adminpw@localhost:7054 \
     --tls.certfiles /ca-certs/ca.org1.example.com-cert.pem \
@@ -25,7 +25,7 @@ docker run --rm \
   --network host \
   -v "${NETWORK_DIR}/crypto-config/peerOrganizations/org1.example.com/ca:/ca-certs" \
   -v "${WALLET_DIR}:/wallet" \
-  hyperledger/fabric-ca-client:1.5 \
+  hyperledger/fabric-ca:1.5 \
   fabric-ca-client register \
     --id.name appUser \
     --id.secret appUserSecret \
@@ -40,7 +40,7 @@ docker run --rm \
   --network host \
   -v "${NETWORK_DIR}/crypto-config/peerOrganizations/org1.example.com/ca:/ca-certs" \
   -v "${WALLET_DIR}:/wallet" \
-  hyperledger/fabric-ca-client:1.5 \
+  hyperledger/fabric-ca:1.5 \
   fabric-ca-client enroll \
     -u https://appUser:appUserSecret@localhost:7054 \
     --tls.certfiles /ca-certs/ca.org1.example.com-cert.pem \
