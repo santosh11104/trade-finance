@@ -9,10 +9,14 @@ const db = require('./db');
 const caClient = require('./caClient');
 const lcRoutes = require('./routes/lc');
 const eventListener = require('./eventListener');
+const swagger = require('./swagger');
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
+
+// Swagger documentation
+app.use('/api-docs', swagger.serve, swagger.setup);
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
@@ -25,6 +29,17 @@ app.get('/health', async (req, res) => {
 });
 
 // Seed database with test users (for development only)
+/**
+ * @openapi
+ * /admin/seed:
+ *   post:
+ *     summary: Seed system with test data
+ *     description: Seeds the database with default test users and registers them with the Fabric CA.
+ *     tags: [Admin]
+ *     responses:
+ *       200:
+ *         description: Database seeded successfully
+ */
 app.post('/admin/seed', async (req, res) => {
   try {
     const bcrypt = require('bcryptjs');
@@ -71,6 +86,31 @@ app.post('/admin/seed', async (req, res) => {
 });
 
 // User registration (admin only)
+/**
+ * @openapi
+ * /auth/register:
+ *   post:
+ *     summary: Register a new user (Admin only)
+ *     description: Create a new user in the database and provision identities on Fabric CA.
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [username, password, role, orgMsp]
+ *             properties:
+ *               username: { type: string }
+ *               password: { type: string }
+ *               role: { type: string, enum: [importer, exporter, bank, admin] }
+ *               orgMsp: { type: string, enum: [Org1MSP, Org2MSP, Org3MSP, Org4MSP] }
+ *     responses:
+ *       201:
+ *         description: User created successfully
+ */
 app.post('/auth/register', authorize, permit('admin'), async (req, res) => {
   const { username, password, role, orgMsp } = req.body;
 
@@ -139,6 +179,33 @@ app.post('/auth/register', authorize, permit('admin'), async (req, res) => {
 });
 
 // User login
+/**
+ * @openapi
+ * /auth/login:
+ *   post:
+ *     summary: Authenticate user
+ *     description: Receives a JWT token for subsequent LC operations.
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [username, password]
+ *             properties:
+ *               username: { type: string, example: importer1 }
+ *               password: { type: string, example: password }
+ *     responses:
+ *       200:
+ *         description: Authentication successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token: { type: string }
+ */
 app.post('/auth/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
