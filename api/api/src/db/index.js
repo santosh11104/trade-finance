@@ -1,12 +1,12 @@
-const { Pool } = require('pg');
-const config = require('./config');
+const pgp = require('pg-promise')();
+const config = require('../config');
 
-const pool = new Pool({ connectionString: config.dbUrl });
+// Create the database instance
+const db = pgp(config.dbUrl);
 
 async function initDb() {
-  const client = await pool.connect();
   try {
-    await client.query(`CREATE TABLE IF NOT EXISTS users (
+    await db.none(`CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       username VARCHAR(128) NOT NULL UNIQUE,
       password_hash VARCHAR(256) NOT NULL,
@@ -15,7 +15,7 @@ async function initDb() {
       created_at TIMESTAMPTZ DEFAULT now()
     );`);
 
-    await client.query(`CREATE TABLE IF NOT EXISTS lc_metadata (
+    await db.none(`CREATE TABLE IF NOT EXISTS lc_metadata (
       id VARCHAR(64) PRIMARY KEY,
       importer VARCHAR(128),
       exporter VARCHAR(128),
@@ -29,7 +29,7 @@ async function initDb() {
       last_event VARCHAR(64)
     );`);
 
-    await client.query(`CREATE TABLE IF NOT EXISTS audit_logs (
+    await db.none(`CREATE TABLE IF NOT EXISTS audit_logs (
       id SERIAL PRIMARY KEY,
       lc_id VARCHAR(64) NOT NULL,
       event_type VARCHAR(64) NOT NULL,
@@ -37,14 +37,15 @@ async function initDb() {
       source VARCHAR(64) NOT NULL,
       created_at TIMESTAMPTZ DEFAULT now()
     );`);
-  } finally {
-    client.release();
+
+    console.log('Database schema initialized successfully');
+  } catch (err) {
+    console.error('Error initializing database schema:', err);
+    throw err;
   }
 }
 
-async function query(text, params) {
-  const res = await pool.query(text, params);
-  return res;
-}
-
-module.exports = { initDb, query };
+module.exports = {
+  db,
+  initDb
+};

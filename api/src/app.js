@@ -8,11 +8,12 @@ const rateLimit = require('express-rate-limit');
 const Joi = require('joi');
 const config = require('./config');
 const { signToken, authorize, permit } = require('./auth');
-const db = require('./db');
+const { db, initDb } = require('./db');
 const caClient = require('./caClient');
 const lcRoutes = require('./routes/lc');
 const eventListener = require('./eventListener');
 const swagger = require('./swagger');
+const PostgresRepository = require('./repositories/postgresRepository');
 
 const app = express();
 
@@ -32,7 +33,7 @@ const generalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10, // limit each IP to 10 auth requests per hour
+  max: 10, // limit each auth requests per hour
   message: { error: 'Too many authentication attempts, please try again after an hour.' }
 });
 
@@ -44,7 +45,8 @@ app.use('/api-docs', swagger.serve, swagger.setup);
 // Health check endpoint
 app.get('/health', async (req, res) => {
   try {
-    await db.query('SELECT 1');
+    // Use pg-promise simple query for health check
+    await db.none('SELECT 1');
     res.json({ status: 'healthy', database: 'connected' });
   } catch (err) {
     res.status(503).json({ status: 'unhealthy', database: 'disconnected' });
@@ -74,20 +76,8 @@ const validate = (schema) => (req, res, next) => {
 };
 
 // Seed database with test users (for development only)
-/**
- * @openapi
- * /admin/seed:
- *   post:
- *     summary: Seed system with test data
- *     description: Seeds the database with default test users and registers them with the Fabric CA.
- *     tags: [Admin]
- *     responses:
- *       200:
- *         description: Database seeded successfully
- */
 app.post('/admin/seed', async (req, res) => {
   try {
-    const bcrypt = require('bcryptjs');
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash('password', salt);
 
@@ -100,24 +90,21 @@ app.post('/admin/seed', async (req, res) => {
     ];
 
     for (const user of users) {
-      await db.query(
-        'INSERT INTO users (username, password_hash, role, org_msp) VALUES ($1, $2, $3, $4) ON CONFLICT (username) DO NOTHING',
-        [user.username, passwordHash, user.role, user.org]
-      );
+      await PostgresRepository.createUser({
+        username: user.username,
+        passwordHash: passwordHash,
+        role: user.role,
+        orgMsp: user.org
+      });
       try {
         const enrollmentSecret = 'password';
-        try {
-          await caClient.registerAndEnrollUser(user.username, user.role, user.org, enrollmentSecret);
-        } catch (caErr) {
-          if (caErr.code === 'ALREADY_REGISTERED') {
-            console.log(`User ${user.username} already registered on CA, attempting re-enrollment...`);
-            await caClient.enrollUser(user.username, enrollmentSecret, user.org);
-          } else {
-            throw caErr;
-          }
-        }
+        await caClient.registerAndEnrollUser(user.username, user.role, user.org, enrollmentSecret);
       } catch (caErr) {
-        console.warn(`Fabric identity setup failed for ${user.username}: ${caErr.message}`);
+        if (caErr.code === 'ALREADY_REGISTERED') {
+          await caClient.enrollUser(user.username, enrollmentSecret, user.org);
+        } else {
+          console.warn(`Fabric identity setup failed for ${user.username}: ${caErr.message}`);
+        }
       }
     }
 
@@ -128,31 +115,6 @@ app.post('/admin/seed', async (req, res) => {
 });
 
 // User registration (admin only)
-/**
- * @openapi
- * /auth/register:
- *   post:
- *     summary: Register a new user (Admin only)
- *     description: Create a new user in the database and provision identities on Fabric CA.
- *     tags: [Auth]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [username, password, role, orgMsp]
- *             properties:
- *               username: { type: string }
- *               password: { type: string }
- *               role: { type: string, enum: [importer, exporter, bank, admin] }
- *               orgMsp: { type: string, enum: [Org1MSP, Org2MSP, Org3MSP, Org4MSP] }
- *     responses:
- *       201:
- *         description: User created successfully
- */
 app.post('/auth/register', authLimiter, authorize, permit('admin'), validate(schemas.register), async (req, res) => {
   const { username, password, role, orgMsp } = req.body;
 
@@ -160,10 +122,12 @@ app.post('/auth/register', authLimiter, authorize, permit('admin'), validate(sch
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    const result = await db.query(
-      'INSERT INTO users (username, password_hash, role, org_msp) VALUES ($1, $2, $3, $4) RETURNING username, role, org_msp',
-      [username, passwordHash, role, orgMsp]
-    );
+    const user = await PostgresRepository.createUser({
+      username,
+      passwordHash,
+      role,
+      orgMsp
+    });
 
     try {
       await caClient.registerAndEnrollUser(username, role, orgMsp);
@@ -175,7 +139,7 @@ app.post('/auth/register', authLimiter, authorize, permit('admin'), validate(sch
     res.status(201).json({
       success: true,
       message: 'user created successfully and enrolled with Fabric CA',
-      user: result.rows[0]
+      user: user
     });
   } catch (err) {
     if (err.code === '23505') {
@@ -186,44 +150,16 @@ app.post('/auth/register', authLimiter, authorize, permit('admin'), validate(sch
 });
 
 // User login
-/**
- * @openapi
- * /auth/login:
- *   post:
- *     summary: Authenticate user
- *     description: Receives a JWT token for subsequent LC operations.
- *     tags: [Auth]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [username, password]
- *             properties:
- *               username: { type: string, example: importer1 }
- *               password: { type: string, example: password }
- *     responses:
- *       200:
- *         description: Authentication successful
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 token: { type: string }
- */
 app.post('/auth/login', authLimiter, validate(schemas.login), async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const userResult = await db.query('SELECT username, password_hash, role, org_msp FROM users WHERE username=$1', [username]);
-    if (!userResult.rows.length) {
+    const user = await PostgresRepository.findUserByUsername(username);
+    if (!user) {
       return res.status(401).json({ error: 'invalid credentials' });
     }
-    const user = userResult.rows[0];
 
-    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    const isValidPassword = await bcrypt.compare(password, user.password_hash, user.password_hash);
     if (!isValidPassword) {
       return res.status(401).json({ error: 'invalid credentials' });
     }
@@ -244,24 +180,11 @@ app.use((err, req, res, next) => {
 
 const start = async () => {
   try {
-    await db.initDb();
+    await initDb();
     await caClient.enrollAdmin();
     await eventListener.startEventListener();
     app.listen(config.port, () => {
       console.log(`Trade Finance API listening on port ${config.port}`);
-      console.log(`API Endpoints:`);
-      console.log(`  POST /auth/login    - Authenticate user`);
-      console.log(`  POST /lc/create     - Create LC (importer)`);
-      console.log(`  POST /lc/issue      - Issue LC (importer proposes, bank approves)`);
-      console.log(`  POST /lc/advise     - Advise LC (advising bank)`);
-      console.log(`  POST /lc/confirm    - Confirm LC (advising bank)`);
-      console.log(`  POST /lc/ship       - Submit documents (exporter)`);
-      console.log(`  POST /lc/verify     - Verify documents (issuing bank)`);
-      console.log(`  POST /lc/pay        - Release payment (exporter proposes, bank approves)`);
-      console.log(`  POST /lc/amend      - Amend LC (importer/bank)`);
-      console.log(`  POST /lc/cancel     - Cancel LC (importer/bank)`);
-      console.log(`  GET  /lc/:id        - Query LC by ID`);
-      console.log(`  GET  /lc/:id/history - Get LC status history`);
     });
   } catch (err) {
     console.error('Failed to start API', err);
