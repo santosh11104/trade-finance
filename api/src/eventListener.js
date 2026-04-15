@@ -1,5 +1,5 @@
 const config = require('./config');
-const db = require('./db');
+const PostgresRepository = require('./repositories/postgresRepository');
 
 async function startEventListener() {
   // Event listening requires peer event service access which often has
@@ -13,39 +13,19 @@ async function syncLCMetadata(contract, lcId, lastEvent) {
     const result = await contract.evaluateTransaction('queryLC', [lcId]);
     const lc = JSON.parse(result.toString());
 
-    await db.query(
-      `INSERT INTO lc_metadata (
-         id, importer, exporter, issuing_bank, advising_bank, amount, currency, status,
-         created_at, updated_at, last_event,
-         issue_proposed_by, issue_approved_by, payment_proposed_by, payment_approved_by
-       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-       ON CONFLICT (id) DO UPDATE SET
-         status = EXCLUDED.status,
-         updated_at = EXCLUDED.updated_at,
-         last_event = EXCLUDED.last_event,
-         issue_proposed_by = EXCLUDED.issue_proposed_by,
-         issue_approved_by = EXCLUDED.issue_approved_by,
-         payment_proposed_by = EXCLUDED.payment_proposed_by,
-         payment_approved_by = EXCLUDED.payment_approved_by`,
-      [
-        lc.id,
-        lc.importer,
-        lc.exporter,
-        lc.issuingBank,
-        lc.advisingBank,
-        lc.amount,
-        lc.currency,
-        lc.status,
-        lc.createdAt,
-        lc.updatedAt,
-        lastEvent,
-        lc.issueProposal?.proposedBy || null,
-        lc.issueProposal?.approvedBy || null,
-        lc.paymentProposal?.proposedBy || null,
-        lc.paymentProposal?.approvedBy || null
-      ]
-    );
+    await PostgresRepository.upsertLCMetadata({
+      id: lc.id,
+      importer: lc.importer,
+      exporter: lc.exporter,
+      issuingBank: lc.issuingBank,
+      advisingBank: lc.advisingBank,
+      amount: lc.amount,
+      currency: lc.currency,
+      status: lc.status,
+      createdAt: lc.createdAt,
+      updatedAt: lc.updatedAt,
+      lastEvent: lastEvent
+    });
   } catch (err) {
     console.error(`Failed to sync LC metadata for ${lcId}:`, err.message);
   }
