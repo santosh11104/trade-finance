@@ -1,26 +1,49 @@
 #!/bin/bash
 set -e
 
+# Color codes for better visibility
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
 ROOT_DIR=$(cd "$(dirname "$0")/../../.." && pwd)
 NETWORK_DIR="${ROOT_DIR}/blockchain-api/network"
 SCRIPTS_DIR="${NETWORK_DIR}/scripts"
+
+function log_info() {
+  echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+function log_success() {
+  echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+function log_warn() {
+  echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+function log_error() {
+  echo -e "${RED}[ERROR]${NC} $1"
+}
 
 function wait_for_container() {
   local name="$1"
   local attempts=20
   local delay=3
 
-  echo "Waiting for container ${name} to be running..."
+  log_info "Waiting for container ${name} to be running..."
   for i in $(seq 1 ${attempts}); do
     if docker ps --filter "name=${name}" --filter "status=running" --format '{{.Names}}' | grep -q "${name}"; then
-      echo "${name} is running"
+      log_success "${name} is running"
       return 0
     fi
     echo "  attempt ${i}/${attempts}..."
     sleep ${delay}
   done
 
-  echo "ERROR: ${name} did not start in time"
+  log_error "${name} did not start in time"
   return 1
 }
 
@@ -29,31 +52,33 @@ function wait_for_peer() {
   local attempts=30
   local delay=2
 
-  echo "Waiting for peer ${peer_name} to fully initialize..."
+  log_info "Waiting for peer ${peer_name} to fully initialize..."
   for i in $(seq 1 ${attempts}); do
-    # Check peer logs for "Started peer" message indicating it's ready
     if docker logs "${peer_name}" 2>&1 | grep -q "Started peer"; then
-      echo "${peer_name} is ready"
+      log_success "${peer_name} is ready"
       return 0
     fi
     echo "  attempt ${i}/${attempts}..."
     sleep ${delay}
   done
 
-  echo "ERROR: ${peer_name} did not become ready in time"
+  log_error "${peer_name} did not become ready in time"
   return 1
 }
 
 cd "${NETWORK_DIR}"
 
-echo "==> Starting PostgreSQL"
-docker compose --env-file "${ROOT_DIR}/.env" up -d postgres
+echo -e "${BLUE}======================================================================${NC}"
+echo -e "${BLUE}   STARTING TRADE FINANCE HYPERLEDGER FABRIC NETWORK                 ${NC}"
+echo -e "${BLUE}======================================================================${NC}"
 
+log_info "Starting PostgreSQL database..."
+docker compose --env-file "${ROOT_DIR}/.env" up -d postgres
 wait_for_container tradefinance-postgres
 
 cd "${SCRIPTS_DIR}"
 
-echo "==> Starting Fabric network"
+log_info "Launching Fabric network components..."
 bash network-up.sh
 
 wait_for_container orderer.example.com
@@ -62,47 +87,46 @@ wait_for_container peer0.org2.example.com
 wait_for_container peer0.org3.example.com
 wait_for_container peer0.org4.example.com
 
-# Wait for peers to be fully ready (CouchDB initialization takes time)
-echo "==> Waiting for peers to fully initialize..."
+log_info "Waiting for peers to fully initialize (CouchDB state database)..."
 wait_for_peer peer0.org1.example.com
 wait_for_peer peer0.org2.example.com
 wait_for_peer peer0.org3.example.com
 wait_for_peer peer0.org4.example.com
 
-# Additional delay to ensure all services are ready
-echo "==> Waiting additional 10 seconds for stabilization..."
+log_warn "Waiting additional 10 seconds for stabilization..."
 sleep 10
 
-echo "==> Creating channel and joining all peers"
+log_info "Creating channel and joining all peers..."
 bash create-channel.sh
 
-echo "==> Deploying chaincode"
+log_info "Deploying Letter of Credit chaincode..."
 bash deploy-chaincode.sh
 
-echo "==> Setting up API wallet"
+log_info "Setting up API wallet and identities..."
 cd "${ROOT_DIR}/api" && node create-wallet.js
 
-echo "==> Starting monitoring and observability services"
+log_info "Starting monitoring and observability services (Explorer, Grafana, Jaeger)..."
 cd "${NETWORK_DIR}"
 docker compose --env-file "${ROOT_DIR}/.env" up -d prometheus grafana jaeger explorerdb.mynetwork.com explorer.mynetwork.com
 
-echo "Waiting for services to initialize..."
+log_info "Finalizing services initialization..."
 sleep 10
 
-echo "==> All Fabric deployment steps completed successfully"
+echo -e "${GREEN}======================================================================${NC}"
+echo -e "${GREEN}   FABRIC DEPLOYMENT COMPLETED SUCCESSFULLY                          ${NC}"
+echo -e "${GREEN}======================================================================${NC}"
 echo ""
-echo "PostgreSQL is running on port 5432"
-echo "Fabric network is running"
-echo "Wallet identity (appUser) is created"
+echo -e "Database:    PostgreSQL running on port 5432"
+echo -e "Network:     Hyperledger Fabric network is operational"
+echo -e "Identity:    Wallet identity (appUser) has been created"
 echo ""
-echo "Monitoring services:"
-echo "  - Hyperledger Explorer: http://localhost:8082 (login: exploreradmin/exploreradminpw)"
-echo "  - Grafana:              http://localhost:3000 (login: admin/admin)"
-echo "  - Prometheus:           http://localhost:9090"
-echo "  - Jaeger:               http://localhost:16686"
+echo -e "Monitoring Access:"
+echo -e "  - Hyperledger Explorer: ${BLUE}http://localhost:8082${NC} (login: exploreradmin/exploreradminpw)"
+echo -e "  - Grafana:              ${BLUE}http://localhost:3000${NC} (login: admin/admin)"
+echo -e "  - Prometheus:           ${BLUE}http://localhost:9090${NC}"
+echo -e "  - Jaeger:               ${BLUE}http://localhost:16686${NC}"
 echo ""
-echo "To start the API, run:"
-echo "  cd ${ROOT_DIR}/api && npm start"
-
-echo "To start the API and database separately, use the instructions in the repository README."
+echo -e "To start the API, run:"
+echo -e "  ${YELLOW}cd ${ROOT_DIR}/api && npm start${NC}"
+echo ""
 
