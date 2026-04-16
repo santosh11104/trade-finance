@@ -38,6 +38,14 @@ async function initDb() {
       created_at TIMESTAMPTZ DEFAULT now()
     );`);
 
+    await db.none(`CREATE TABLE IF NOT EXISTS fabric_identities (
+      username VARCHAR(128) PRIMARY KEY,
+      certificate TEXT NOT NULL,
+      encrypted_private_key TEXT NOT NULL,
+      msp_id VARCHAR(64) NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now()
+    );`);
+
     console.log('Database schema initialized successfully');
   } catch (err) {
     console.error('Error initializing database schema:', err);

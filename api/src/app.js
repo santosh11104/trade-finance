@@ -14,6 +14,7 @@ const lcRoutes = require('./routes/lc');
 const eventListener = require('./eventListener');
 const swagger = require('./swagger');
 const PostgresRepository = require('./repositories/postgresRepository');
+const { seedDatabase } = require('./seeder');
 
 const app = express();
 
@@ -46,7 +47,7 @@ app.use('/api-docs', swagger.serve, swagger.setup);
 app.get('/health', async (req, res) => {
   try {
     // Use pg-promise simple query for health check
-    await db.none('SELECT 1');
+    await db.one('SELECT 1');
     res.json({ status: 'healthy', database: 'connected' });
   } catch (err) {
     res.status(503).json({ status: 'unhealthy', database: 'disconnected' });
@@ -75,44 +76,7 @@ const validate = (schema) => (req, res, next) => {
   next();
 };
 
-// Seed database with test users (for development only)
-app.post('/admin/seed', async (req, res) => {
-  try {
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash('password', salt);
-
-    const users = [
-      { username: 'importer1', role: 'importer', org: 'Org1MSP' },
-      { username: 'exporter1', role: 'exporter', org: 'Org2MSP' },
-      { username: 'bank1', role: 'bank', org: 'Org3MSP' },
-      { username: 'bank2', role: 'bank', org: 'Org4MSP' },
-      { username: 'admin', role: 'admin', org: 'Org1MSP' }
-    ];
-
-    for (const user of users) {
-      await PostgresRepository.createUser({
-        username: user.username,
-        passwordHash: passwordHash,
-        role: user.role,
-        orgMsp: user.org
-      });
-      try {
-        const enrollmentSecret = 'password';
-        await caClient.registerAndEnrollUser(user.username, user.role, user.org, enrollmentSecret);
-      } catch (caErr) {
-        if (caErr.code === 'ALREADY_REGISTERED') {
-          await caClient.enrollUser(user.username, enrollmentSecret, user.org);
-        } else {
-          console.warn(`Fabric identity setup failed for ${user.username}: ${caErr.message}`);
-        }
-      }
-    }
-
-    res.json({ success: true, message: 'Database seeded with test users and Fabric identities' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// Joi Validation Schemas for Auth
 
 // User registration (admin only)
 app.post('/auth/register', authLimiter, authorize, permit('admin'), validate(schemas.register), async (req, res) => {
@@ -159,7 +123,7 @@ app.post('/auth/login', authLimiter, validate(schemas.login), async (req, res) =
       return res.status(401).json({ error: 'invalid credentials' });
     }
 
-    const isValidPassword = await bcrypt.compare(password, user.password_hash, user.password_hash);
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
     if (!isValidPassword) {
       return res.status(401).json({ error: 'invalid credentials' });
     }
@@ -182,6 +146,7 @@ const start = async () => {
   try {
     await initDb();
     await caClient.enrollAdmin();
+    await seedDatabase();
     await eventListener.startEventListener();
     app.listen(config.port, () => {
       console.log(`Trade Finance API listening on port ${config.port}`);

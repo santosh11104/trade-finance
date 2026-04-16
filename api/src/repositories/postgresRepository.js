@@ -6,6 +6,22 @@ const PostgresRepository = {
     return db.oneOrNone('SELECT username, password_hash, role, org_msp FROM users WHERE username=$1', [username]);
   },
 
+  async saveIdentity(username, certificate, encryptedPrivateKey, mspId) {
+    return db.none(
+      `INSERT INTO fabric_identities (username, certificate, encrypted_private_key, msp_id)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (username) DO UPDATE
+       SET certificate = EXCLUDED.certificate,
+           encrypted_private_key = EXCLUDED.encrypted_private_key,
+           msp_id = EXCLUDED.msp_id`,
+      [username, certificate, encryptedPrivateKey, mspId]
+    );
+  },
+
+  async getIdentity(username) {
+    return db.oneOrNone('SELECT certificate, encrypted_private_key, msp_id FROM fabric_identities WHERE username=$1', [username]);
+  },
+
   async createUser(user) {
     return db.one(
       'INSERT INTO users (username, password_hash, role, org_msp) VALUES ($1, $2, $3, $4) RETURNING username, role, org_msp',

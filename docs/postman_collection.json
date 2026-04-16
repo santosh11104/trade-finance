@@ -9,16 +9,12 @@
       "name": "User & System Management",
       "item": [
         {
-          "name": "Seed Database",
+          "name": "Health Check",
           "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{}"
-            },
-            "url": { "raw": "http://localhost:4000/admin/seed", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["admin", "seed"] },
-            "description": "Seeds the database with default test users (importer1, exporter1, bank1, bank2, admin) and automatically registers/enrolls them with the Fabric Certificate Authority (CA)."
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "http://localhost:4000/health", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["health"] },
+            "description": "Verifies API and Database connectivity."
           }
         },
         {

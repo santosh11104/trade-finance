@@ -23,7 +23,7 @@ The system includes:
 - `blockchain-api/network/explorer/` — Hyperledger Explorer configuration
 - `blockchain-api/network/monitoring/` — Prometheus and Grafana configuration
 - `chaincode/lc/` — Go chaincode source and private data collection definitions
-- `api/` — Node.js REST API, authentication, Fabric gateway client, PostgreSQL sync, and OpenTelemetry tracing
+- `api/` — Node.js REST API (Controller-Service-Repository architecture), authentication, Fabric gateway client, PostgreSQL sync (using pg-promise), and OpenTelemetry tracing
 - `db/` — PostgreSQL schema and migration SQL
 - `docs/` — API request collection and supporting documentation
 
@@ -75,7 +75,7 @@ After running `start-all.sh`, the following services are available:
 
 ### API startup is manual
 
-The API server is intentionally not started automatically by `start-all.sh`.
+THe API server is intentionally not started automatically by `start-all.sh`.
 Start the API separately once the Fabric network, chaincode, and monitoring stack are ready.
 
 To start the API locally (after running `start-all.sh`):
@@ -84,6 +84,8 @@ To start the API locally (after running `start-all.sh`):
 cd api
 npm start
 ```
+
+The API will automatically initialize the database schema and seed test users with encrypted Fabric identities in the database on its first run.
 
 Or run the API with an explicit database URL:
 
@@ -108,6 +110,7 @@ The API includes built-in Swagger documentation for interactive testing.
 ## API Endpoints
 
 Supported endpoints:
+- `GET /health` - Check API and Database health
 - `POST /lc/create` - Create LC (Importer)
 - `POST /lc/issue` - Issue LC with **two-phase endorsement** (Importer proposes, Issuing Bank approves)
 - `POST /lc/advise` - Advise LC (Advising Bank)
@@ -229,10 +232,14 @@ The Fabric network uses standard MSP names with the following business mapping:
 - Proposal state tracked on-chain with `IssueProposal` and `PaymentProposal` records
 
 ### 2. CouchDB State Database
-- Each peer has its own CouchDB container for rich query support
-- Enables complex queries on state data using JSON/Mango queries
-- Supports indexing for performance optimization
-- CouchDB Web UI accessible on ports 5984, 6984, 7984, 8984
+Each peer has its own CouchDB container for rich query support, enabling complex queries on state data using JSON/Mango queries.
+
+| Organization | URL | Web UI (Fauxton) | Username | Password |
+| :--- | :--- | :--- | :--- | :--- |
+| **Org1** | `http://localhost:5984` | `http://localhost:5984/_utils` | `admin` | `adminpw` |
+| **Org2** | `http://localhost:6984` | `http://localhost:6984/_utils` | `admin` | `adminpw` |
+| **Org3** | `http://localhost:7984` | `http://localhost:7984/_utils` | `admin` | `adminpw` |
+| **Org4** | `http://localhost:8984` | `http://localhost:8984/_utils` | `admin` | `adminpw` |
 
 ### 3. Hyperledger Explorer
 - Complete blockchain visibility via web interface

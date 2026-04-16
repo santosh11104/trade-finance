@@ -1,19 +1,93 @@
-const fabricClient = require('../fabricClient');
+const fs = require('fs');
+const path = require('path');
+const grpc = require('@grpc/grpc-js');
+const { connect, signers } = require('@hyperledger/fabric-gateway');
+const crypto = require('crypto');
 const config = require('../config');
+const PostgresRepository = require('./postgresRepository');
+const { decrypt } = require('../cryptoUtils');
+
+const projectRoot = path.resolve(__dirname, '../../../');
+
+function getCCP() {
+    const ccpRaw = fs.readFileSync(config.fabric.connectionProfile, 'utf8');
+    return JSON.parse(ccpRaw);
+}
+
+function resolvePath(p) {
+    if (p.startsWith('./')) {
+        return path.resolve(projectRoot, p);
+    }
+    return p;
+}
+
+async function getIdentity(userId) {
+    const identity = await PostgresRepository.getIdentity(userId);
+    if (!identity) {
+      throw new Error(`Identity ${userId} not found in database`);
+    }
+
+    return {
+      mspId: identity.msp_id,
+      credentials: Buffer.from(identity.certificate),
+      privateKeyPem: decrypt(identity.encrypted_private_key),
+    };
+}
+
+function newGrpcConnection(peerName, ccp) {
+    const peer = ccp.peers[peerName];
+    const tlsRootCertPath = resolvePath(peer.tlsCACerts.path);
+    const tlsRootCert = fs.readFileSync(tlsRootCertPath);
+    const tlsCredentials = grpc.credentials.createSsl(tlsRootCert);
+
+    const address = peer.url.replace(/^grpcs?:\/\//, '');
+
+    return new grpc.Client(address, tlsCredentials, {
+        'grpc.ssl_target_name_override': peer.grpcOptions['ssl-target-name-override'],
+        'grpc.default_authority': peer.grpcOptions['ssl-target-name-override']
+    });
+}
+
+async function executeWithGateway(userId, operation) {
+    const ccp = getCCP();
+    const org = ccp.organizations[config.fabric.orgMsp];
+    const peerName = org.peers[0];
+
+    const identity = await getIdentity(userId);
+    const client = newGrpcConnection(peerName, ccp);
+
+    const gateway = connect({
+        client,
+        identity: {
+            mspId: identity.mspId,
+            credentials: identity.credentials,
+        },
+        signer: signers.newPrivateKeySigner(crypto.createPrivateKey(identity.privateKeyPem)),
+    });
+
+    try {
+        const network = gateway.getNetwork(config.fabric.channelName);
+        const contract = network.getContract(config.fabric.chaincodeName);
+        return await operation(contract);
+    } finally {
+        gateway.close();
+        client.close();
+    }
+}
 
 const FabricRepository = {
-  /**
-   * Generic wrapper for submitting transactions
-   */
   async submit(transactionName, args, userId) {
-    return fabricClient.submitTransaction(transactionName, args, userId);
+    return executeWithGateway(userId, async (contract) => {
+      const result = await contract.submitTransaction(transactionName, ...args);
+      return Buffer.from(result).toString();
+    });
   },
 
-  /**
-   * Generic wrapper for evaluating transactions
-   */
   async evaluate(transactionName, args, userId) {
-    return fabricClient.evaluateTransaction(transactionName, args, userId);
+    return executeWithGateway(userId, async (contract) => {
+      const result = await contract.evaluateTransaction(transactionName, ...args);
+      return Buffer.from(result).toString();
+    });
   },
 
   // --- Domain Specific Methods ---

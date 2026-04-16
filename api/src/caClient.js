@@ -3,6 +3,8 @@ const { User } = require('fabric-common');
 const fs = require('fs');
 const path = require('path');
 const config = require('./config');
+const PostgresRepository = require('./repositories/postgresRepository');
+const { encrypt, decrypt } = require('./cryptoUtils');
 
 async function getCAClient() {
   const ccpRaw = fs.readFileSync(config.fabric.connectionProfile, 'utf8');
@@ -20,9 +22,9 @@ async function getCAClient() {
 async function enrollAdmin() {
   try {
     const ca = await getCAClient();
-    const adminPath = path.join(config.fabric.walletPath, `${config.fabric.caAdmin}.id`);
-    if (fs.existsSync(adminPath)) {
-      console.log(`An identity for the admin user "${config.fabric.caAdmin}" already exists in the wallet`);
+    const adminIdentity = await PostgresRepository.getIdentity(config.fabric.caAdmin);
+    if (adminIdentity) {
+      console.log(`An identity for the admin user "${config.fabric.caAdmin}" already exists in the database`);
       return;
     }
 
@@ -36,12 +38,15 @@ async function enrollAdmin() {
       type: 'X.509',
       version: 1,
     };
-    
-    if (!fs.existsSync(config.fabric.walletPath)) {
-      fs.mkdirSync(config.fabric.walletPath, { recursive: true });
-    }
-    fs.writeFileSync(adminPath, JSON.stringify(x509Identity));
-    console.log(`Successfully enrolled admin user "${config.fabric.caAdmin}" and imported it into the wallet`);
+
+    const encryptedKey = encrypt(x509Identity.credentials.privateKey);
+    await PostgresRepository.saveIdentity(
+      config.fabric.caAdmin,
+      x509Identity.credentials.certificate,
+      encryptedKey,
+      x509Identity.mspId
+    );
+    console.log(`Successfully enrolled admin user "${config.fabric.caAdmin}" and saved it to the database`);
 
   } catch (error) {
     console.error(`Failed to enroll admin user "${config.fabric.caAdmin}": ${error}`);
@@ -52,7 +57,11 @@ async function enrollAdmin() {
 async function enrollUser(username, secret, orgMsp = config.fabric.orgMsp) {
   try {
     const ca = await getCAClient();
-    const userPath = path.join(config.fabric.walletPath, `${username}.id`);
+    const identity = await PostgresRepository.getIdentity(username);
+    if (identity) {
+      console.log(`An identity for the user "${username}" already exists in the database`);
+      return identity;
+    }
     
     const enrollment = await ca.enroll({
       enrollmentID: username,
@@ -68,12 +77,15 @@ async function enrollUser(username, secret, orgMsp = config.fabric.orgMsp) {
       type: 'X.509',
       version: 1,
     };
-    
-    if (!fs.existsSync(config.fabric.walletPath)) {
-      fs.mkdirSync(config.fabric.walletPath, { recursive: true });
-    }
-    fs.writeFileSync(userPath, JSON.stringify(x509Identity));
-    console.log(`Successfully enrolled user "${username}" and imported it into the wallet`);
+
+    const encryptedKey = encrypt(x509Identity.credentials.privateKey);
+    await PostgresRepository.saveIdentity(
+      username,
+      x509Identity.credentials.certificate,
+      encryptedKey,
+      x509Identity.mspId
+    );
+    console.log(`Successfully enrolled user "${username}" and saved it to the database`);
     return x509Identity;
   } catch (error) {
     console.error(`Failed to enroll user "${username}": ${error}`);
@@ -83,25 +95,26 @@ async function enrollUser(username, secret, orgMsp = config.fabric.orgMsp) {
 
 async function registerAndEnrollUser(username, role, orgMsp = config.fabric.orgMsp, optionalSecret = null) {
   try {
-    const userPath = path.join(config.fabric.walletPath, `${username}.id`);
-    if (fs.existsSync(userPath)) {
-      console.log(`An identity for the user "${username}" already exists in the wallet`);
-      return;
+    const identity = await PostgresRepository.getIdentity(username);
+    if (identity) {
+      console.log(`An identity for the user "${username}" already exists in the database`);
+      return identity;
     }
 
-    const adminPath = path.join(config.fabric.walletPath, `${config.fabric.caAdmin}.id`);
-    if (!fs.existsSync(adminPath)) {
+    const adminIdentity = await PostgresRepository.getIdentity(config.fabric.caAdmin);
+    if (!adminIdentity) {
       throw new Error('Admin identity missing. Run enrollAdmin first.');
     }
-    const adminIdentity = JSON.parse(fs.readFileSync(adminPath, 'utf8'));
+
+    const decryptedPrivateKey = decrypt(adminIdentity.encrypted_private_key);
 
     const ca = await getCAClient();
     const cryptoSuite = ca.getCryptoSuite();
     const registrar = new User(config.fabric.caAdmin);
     registrar.setCryptoSuite(cryptoSuite);
     
-    const privateKey = await cryptoSuite.importKey(adminIdentity.credentials.privateKey, { ephemeral: true });
-    await registrar.setEnrollment(privateKey, adminIdentity.credentials.certificate, adminIdentity.mspId);
+    const privateKey = await cryptoSuite.importKey(decryptedPrivateKey, { ephemeral: true });
+    await registrar.setEnrollment(privateKey, adminIdentity.certificate, adminIdentity.msp_id);
 
     let secret;
     try {
