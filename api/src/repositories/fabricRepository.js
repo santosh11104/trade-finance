@@ -50,10 +50,12 @@ function newGrpcConnection(peerName, ccp) {
 
 async function executeWithGateway(userId, operation) {
     const ccp = getCCP();
-    const org = ccp.organizations[config.fabric.orgMsp];
-    const peerName = org.peers[0];
-
     const identity = await getIdentity(userId);
+    const org = ccp.organizations[identity.mspId];
+    if (!org) {
+      throw new Error(`Organization ${identity.mspId} not found in connection profile`);
+    }
+    const peerName = org.peers[0];
     const client = newGrpcConnection(peerName, ccp);
 
     const gateway = connect({

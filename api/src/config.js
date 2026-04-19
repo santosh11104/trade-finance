@@ -21,6 +21,12 @@ module.exports = {
     caName: process.env.FABRIC_CA_NAME || 'ca-org1',
     caAdmin: process.env.FABRIC_CA_ADMIN || 'admin',
     caAdminPW: process.env.FABRIC_CA_ADMIN_PW || 'adminpw',
+    caAdminMap: {
+      'Org1MSP': { id: process.env.FABRIC_CA_ADMIN_ORG1 || 'admin', pw: process.env.FABRIC_CA_ADMIN_PW_ORG1 || 'adminpw' },
+      'Org2MSP': { id: process.env.FABRIC_CA_ADMIN_ORG2 || 'admin', pw: process.env.FABRIC_CA_ADMIN_PW_ORG2 || 'adminpw' },
+      'Org3MSP': { id: process.env.FABRIC_CA_ADMIN_ORG3 || 'admin', pw: process.env.FABRIC_CA_ADMIN_PW_ORG3 || 'adminpw' },
+      'Org4MSP': { id: process.env.FABRIC_CA_ADMIN_ORG4 || 'admin', pw: process.env.FABRIC_CA_ADMIN_PW_ORG4 || 'adminpw' },
+    },
     discoveryEnabled: process.env.FABRIC_DISCOVERY_ENABLED !== 'false',
     discoveryAsLocalhost: process.env.FABRIC_DISCOVERY_AS_LOCALHOST === 'true',
   }

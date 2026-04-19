@@ -10,6 +10,7 @@ const config = require('./config');
 const { signToken, authorize, permit } = require('./auth');
 const { db, initDb } = require('./db');
 const caClient = require('./caClient');
+const AuthController = require('./controllers/authController');
 const lcRoutes = require('./routes/lc');
 const eventListener = require('./eventListener');
 const swagger = require('./swagger');
@@ -65,6 +66,12 @@ const schemas = {
   login: Joi.object({
     username: Joi.string().required(),
     password: Joi.string().required()
+  }),
+  enroll: Joi.object({
+    username: Joi.string().required(),
+    role: Joi.string().valid('importer', 'exporter', 'bank', 'admin').required(),
+    orgMsp: Joi.string().valid('Org1MSP', 'Org2MSP', 'Org3MSP', 'Org4MSP').required(),
+    secret: Joi.string().required()
   })
 };
 
@@ -145,7 +152,7 @@ app.use((err, req, res, next) => {
 const start = async () => {
   try {
     await initDb();
-    await caClient.enrollAdmin();
+    await caClient.enrollAllAdmins();
     await seedDatabase();
     await eventListener.startEventListener();
     app.listen(config.port, () => {
