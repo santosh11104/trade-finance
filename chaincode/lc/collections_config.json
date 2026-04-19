@@ -1,7 +1,7 @@
 [
   {
     "name": "pricingCollection",
-    "policy": "OR('Org1MSP.member','Org3MSP.member')",
+    "policy": "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member','Org4MSP.member')",
     "requiredPeerCount": 1,
     "maxPeerCount": 2,
     "blockToLive": 1000000,

@@ -45,14 +45,10 @@ function install_chaincode() {
   CORE_PEER_TLS_ROOTCERT_FILE="/workspace/${TLS_CERT_PATH}"
 
   echo "Installing chaincode on ${PEER_HOST} (${MSP})"
-  output=$(run_peer lifecycle chaincode install ${CHAINCODE_PACKAGE} 2>&1) || {
-    if echo "$output" | grep -q "already successfully installed"; then
-      echo "Chaincode already installed on ${PEER_HOST}, continuing"
-      return 0
-    fi
-    echo "$output"
-    return 1
-  }
+  if ! run_peer lifecycle chaincode install ${CHAINCODE_PACKAGE}; then
+    echo "Error installing chaincode on ${PEER_HOST}"
+    exit 1
+  fi
 }
 
 function approve_chaincode() {
@@ -67,8 +63,8 @@ function approve_chaincode() {
   CORE_PEER_MSPCONFIGPATH="/workspace/blockchain-api/network/crypto-config/peerOrganizations/${ORG_DOMAIN}/users/Admin@${ORG_DOMAIN}/msp"
   CORE_PEER_TLS_ROOTCERT_FILE="/workspace/${TLS_CERT_PATH}"
 
-  echo "Approving chaincode for ${MSP} at ${PEER_HOST}"
-  run_peer lifecycle chaincode approveformyorg \
+  echo "Approving chaincode for ${MSP} at ${PEER_HOST} using Package ID ${PACKAGE_ID}"
+  if ! run_peer lifecycle chaincode approveformyorg \
     --channelID ${CHANNEL_NAME} \
     --name ${CHAINCODE_NAME} \
     --version 1.0 \
@@ -78,7 +74,10 @@ function approve_chaincode() {
     --cafile ${ORDERER_TLS_CA} \
     --signature-policy "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member','Org4MSP.member')" \
     --collections-config /workspace/chaincode/lc/collections_config.json \
-    --validation-plugin vscc
+    --validation-plugin vscc; then
+    echo "Error approving chaincode for ${MSP}"
+    exit 1
+  fi
 }
 
 echo "Pulling required chaincode environment image"
@@ -116,6 +115,7 @@ approve_chaincode Org3MSP peer0.org3.example.com org3.example.com 9051 blockchai
 approve_chaincode Org4MSP peer0.org4.example.com org4.example.com 10051 blockchain-api/network/crypto-config/peerOrganizations/org4.example.com/peers/peer0.org4.example.com/tls/ca.crt
 
 echo "Committing chaincode"
+sleep 5
 CORE_PEER_LOCALMSPID=Org1MSP
 CORE_PEER_ADDRESS=peer0.org1.example.com:7051
 CORE_PEER_MSPCONFIGPATH=/workspace/blockchain-api/network/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
@@ -131,18 +131,6 @@ run_peer lifecycle chaincode commit \
   --signature-policy "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member','Org4MSP.member')" \
   --collections-config /workspace/chaincode/lc/collections_config.json \
   --validation-plugin vscc \
-  --peerAddresses peer0.org1.example.com:7051 \
-  --tlsRootCertFiles /workspace/blockchain-api/network/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt \
-  --peerAddresses peer0.org2.example.com:8051 \
-  --tlsRootCertFiles /workspace/blockchain-api/network/crypto-config/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt \
-  --peerAddresses peer0.org3.example.com:9051 \
-  --tlsRootCertFiles /workspace/blockchain-api/network/crypto-config/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt \
-  --peerAddresses peer0.org4.example.com:10051 \
-  --tlsRootCertFiles /workspace/blockchain-api/network/crypto-config/peerOrganizations/org4.example.com/peers/peer0.org4.example.com/tls/ca.crt
-
-echo "Querying committed chaincode"
-CORE_PEER_LOCALMSPID=Org1MSP
-CORE_PEER_ADDRESS=peer0.org1.example.com:7051
-CORE_PEER_MSPCONFIGPATH=/workspace/blockchain-api/network/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
-CORE_PEER_TLS_ROOTCERT_FILE=/workspace/blockchain-api/network/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-run_peer lifecycle chaincode querycommitted --channelID ${CHANNEL_NAME} --name ${CHAINCODE_NAME}
+  --peerAddresses peer0.org1.example.com:7051 --tlsRootCertFiles /workspace/blockchain-api/network/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt \
+  --peerAddresses peer0.org2.example.com:8051 --tlsRootCertFiles /workspace/blockchain-api/network/crypto-config/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt \
+  --peerAddresses peer0.org3.example.com:9051 --tlsRootCertFiles /workspace/blockchain-api/network/crypto-config/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls/ca.crt
