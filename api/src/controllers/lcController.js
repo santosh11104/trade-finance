@@ -47,7 +47,7 @@ const LCController = {
 
   async confirmLC(req, res) {
     try {
-      const result = await LCService.confirmLC(req.params.id || req.body.id, req.user);
+      const result = await LCService.confirmLetterOfCredit(req.params.id || req.body.id, req.user);
       res.json({ success: true, payload: result });
     } catch (err) {
       res.status(400).json({ error: err.message });
