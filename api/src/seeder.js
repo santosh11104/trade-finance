@@ -13,7 +13,6 @@ async function seedDatabase() {
       { username: 'exporter1', role: 'exporter', org: 'Org2MSP' },
       { username: 'bank1', role: 'bank', org: 'Org3MSP' },
       { username: 'bank2', role: 'bank', org: 'Org4MSP' },
-      { username: 'admin', role: 'admin', org: 'Org1MSP' }
     ];
 
     for (const user of users) {
@@ -43,6 +42,21 @@ async function seedDatabase() {
         console.error(`Failed to seed user ${user.username}: ${err.message}`);
       }
     }
+
+    // Create admin user in DB only (CA identity handled by enrollAllAdmins)
+    try {
+      await PostgresRepository.createUser({
+        username: 'admin',
+        passwordHash: passwordHash,
+        role: 'admin',
+        orgMsp: 'Org1MSP'
+      }).catch(err => {
+        if (err.code !== '23505') throw err;
+      });
+    } catch (err) {
+      console.error(`Failed to seed admin user in DB: ${err.message}`);
+    }
+
     console.log('Database seeding completed');
   } catch (err) {
     console.error('Error seeding database:', err);
