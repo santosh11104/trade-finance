@@ -5,7 +5,9 @@ ROOT_DIR=$(cd "$(dirname "$0")/../../.." && pwd)
 WORKDIR=/workspace/blockchain-api/network
 CHANNEL_NAME=tradechannel
 CHAINCODE_NAME=lccontract
-CHAINCODE_LABEL=lccontract_1
+CHAINCODE_VERSION=${CHAINCODE_VERSION:-1.0}
+CHAINCODE_SEQUENCE=${CHAINCODE_SEQUENCE:-1}
+CHAINCODE_LABEL=${CHAINCODE_NAME}_${CHAINCODE_VERSION}
 CHAINCODE_PATH=/workspace/chaincode/lc
 CHAINCODE_PACKAGE=./chaincode-package/lccontract.tar.gz
 DOCKER_NETWORK=tradefinance
@@ -67,9 +69,9 @@ function approve_chaincode() {
   if ! run_peer lifecycle chaincode approveformyorg \
     --channelID ${CHANNEL_NAME} \
     --name ${CHAINCODE_NAME} \
-    --version 1.0 \
+    --version ${CHAINCODE_VERSION} \
     --package-id ${PACKAGE_ID} \
-    --sequence 1 \
+    --sequence ${CHAINCODE_SEQUENCE} \
     --tls \
     --cafile ${ORDERER_TLS_CA} \
     --signature-policy "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member','Org4MSP.member')" \
@@ -80,8 +82,8 @@ function approve_chaincode() {
   fi
 }
 
-echo "Pulling required chaincode environment image"
-docker pull hyperledger/fabric-ccenv:2.5
+# echo "Pulling required chaincode environment image"
+# docker pull hyperledger/fabric-ccenv:2.5
 
 echo "Packaging chaincode"
 run_peer lifecycle chaincode package ${CHAINCODE_PACKAGE} --path ${CHAINCODE_PATH} --lang golang --label ${CHAINCODE_LABEL}
@@ -101,7 +103,7 @@ PACKAGE_ID=$(docker run --rm -u "${USER_ID}" --network ${DOCKER_NETWORK} \
   -e CORE_PEER_MSPCONFIGPATH=/workspace/blockchain-api/network/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp \
   -e CORE_PEER_TLS_ROOTCERT_FILE=/workspace/blockchain-api/network/crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt \
   -e CORE_PEER_ADDRESS=peer0.org1.example.com:7051 \
-  hyperledger/fabric-tools:2.5 peer lifecycle chaincode queryinstalled | sed -n 's/Package ID: \(.*\), Label: lccontract_1/\1/p')
+  hyperledger/fabric-tools:2.5 peer lifecycle chaincode queryinstalled | sed -n "s/Package ID: \(.*\), Label: ${CHAINCODE_LABEL}/\1/p")
 
 if [ -z "${PACKAGE_ID}" ]; then
   echo "Failed to determine chaincode package ID"
@@ -124,8 +126,8 @@ run_peer lifecycle chaincode commit \
   -o ${ORDERER_ADDRESS} \
   --channelID ${CHANNEL_NAME} \
   --name ${CHAINCODE_NAME} \
-  --version 1.0 \
-  --sequence 1 \
+  --version ${CHAINCODE_VERSION} \
+  --sequence ${CHAINCODE_SEQUENCE} \
   --tls \
   --cafile ${ORDERER_TLS_CA} \
   --signature-policy "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member','Org4MSP.member')" \
