@@ -36,6 +36,10 @@ describe('LCService', () => {
         id: 'LC123',
         status: 'CREATED'
       }));
+      expect(PostgresRepository.createAuditLog).toHaveBeenCalledWith(expect.objectContaining({
+        lcId: 'LC123',
+        eventType: 'LC_CREATED'
+      }));
       expect(result).toEqual({ id: 'LC123' });
     });
 
@@ -101,6 +105,10 @@ describe('LCService', () => {
         status: 'DOCUMENTS_SUBMITTED', 
         last_event: 'submitDocuments' 
       });
+      expect(PostgresRepository.createAuditLog).toHaveBeenCalledWith(expect.objectContaining({
+        lcId: 'LC123',
+        eventType: 'DOCUMENTS_SUBMITTED'
+      }));
     });
   });
 

@@ -2,6 +2,30 @@ const FabricRepository = require('../repositories/fabricRepository');
 const PostgresRepository = require('../repositories/postgresRepository');
 const { validateLCCreation, validateDocumentsHash } = require('../utils/validation');
 
+/**
+ * Helper to log events to the audit table
+ */
+async function logEvent(lcId, eventType, user, details = {}) {
+  try {
+    await PostgresRepository.createAuditLog({
+      lcId,
+      eventType,
+      source: 'API',
+      payload: {
+        actor: user.username,
+        role: user.role,
+        msp: user.orgMsp,
+        timestamp: new Date().toISOString(),
+        ...details
+      }
+    });
+  } catch (err) {
+    console.error(`Failed to create audit log for ${eventType}:`, err);
+    // We don't throw here to avoid failing the main transaction if logging fails,
+    // though in a strict system you might want to.
+  }
+}
+
 const LCService = {
   async createLetterOfCredit(data, user) {
     // 0. API Level Validation
@@ -22,7 +46,6 @@ const LCService = {
     );
 
     // 2. Mirror to Postgres (Off-chain store for searching)
-    // We assume the blockchain returned the created LC object or we use the input data
     await PostgresRepository.upsertLCMetadata({
       id: data.id,
       importer: data.importer,
@@ -37,6 +60,9 @@ const LCService = {
       lastEvent: 'createLC'
     });
 
+    // 3. Audit Log
+    await logEvent(data.id, 'LC_CREATED', user, { amount: data.amount, currency: data.currency });
+
     return result;
   },
 
@@ -45,14 +71,18 @@ const LCService = {
     const message = result.toString ? result.toString() : result;
 
     let status = 'ISSUE_PENDING';
+    let eventType = 'LC_ISSUE_PROPOSED';
     if (!message.includes('proposed')) {
       status = 'ISSUED';
+      eventType = 'LC_ISSUED';
     }
 
     await PostgresRepository.updateLCMetadata(id, {
       status: status,
       last_event: 'issueLC'
     });
+
+    await logEvent(id, eventType, user, { message });
 
     return {
       message: message,
@@ -64,12 +94,14 @@ const LCService = {
   async adviseLetterOfCredit(id, user) {
     const result = await FabricRepository.adviseLC(id, user.username);
     await PostgresRepository.updateLCMetadata(id, { status: 'ADVISED', last_event: 'adviseLC' });
+    await logEvent(id, 'LC_ADVISED', user);
     return result;
   },
 
   async confirmLetterOfCredit(id, user) {
     const result = await FabricRepository.confirmLC(id, user.username);
     await PostgresRepository.updateLCMetadata(id, { status: 'CONFIRMED', last_event: 'confirmLC' });
+    await logEvent(id, 'LC_CONFIRMED', user);
     return result;
   },
 
@@ -83,12 +115,14 @@ const LCService = {
 
     const result = await FabricRepository.submitDocuments(id, documentsHash, user.username);
     await PostgresRepository.updateLCMetadata(id, { status: 'DOCUMENTS_SUBMITTED', last_event: 'submitDocuments' });
+    await logEvent(id, 'DOCUMENTS_SUBMITTED', user, { hash: documentsHash });
     return result;
   },
 
   async verifyShipmentDocuments(id, user) {
     const result = await FabricRepository.verifyDocuments(id, user.username);
     await PostgresRepository.updateLCMetadata(id, { status: 'VERIFIED', last_event: 'verifyDocuments' });
+    await logEvent(id, 'DOCUMENTS_VERIFIED', user);
     return result;
   },
 
@@ -97,11 +131,14 @@ const LCService = {
     const message = result.toString ? result.toString() : result;
 
     let status = 'PAYMENT_PENDING';
+    let eventType = 'PAYMENT_PROPOSED';
     if (!message.includes('proposed')) {
       status = 'PAID';
+      eventType = 'PAYMENT_RELEASED';
     }
 
     await PostgresRepository.updateLCMetadata(id, { status: status, last_event: 'releasePayment' });
+    await logEvent(id, eventType, user, { message });
 
     return {
       message: message,
@@ -113,12 +150,14 @@ const LCService = {
   async amendLetterOfCredit(id, amendmentNote, user) {
     const result = await FabricRepository.amendLC(id, amendmentNote, user.username);
     await PostgresRepository.updateLCMetadata(id, { status: 'AMENDED', last_event: 'amendLC' });
+    await logEvent(id, 'LC_AMENDED', user, { note: amendmentNote });
     return result;
   },
 
   async cancelLetterOfCredit(id, user) {
     const result = await FabricRepository.cancelLC(id, user.username);
     await PostgresRepository.updateLCMetadata(id, { status: 'CANCELLED', last_event: 'cancelLC' });
+    await logEvent(id, 'LC_CANCELLED', user);
     return result;
   },
 
