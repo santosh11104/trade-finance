@@ -19,6 +19,16 @@ const { seedDatabase } = require('./seeder');
 
 const app = express();
 
+const { register } = require('./metrics');
+app.get('/metrics', async (req, res) => {
+  try {
+    res.set('Content-Type', register.contentType);
+    res.end(await register.metrics());
+  } catch (ex) {
+    res.status(500).end(ex);
+  }
+});
+
 // 1. HTTP Header Security
 app.use(helmet());
 app.use(cors());

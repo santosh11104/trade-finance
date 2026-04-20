@@ -1,6 +1,7 @@
 const FabricRepository = require('../repositories/fabricRepository');
 const PostgresRepository = require('../repositories/postgresRepository');
 const { validateLCCreation, validateDocumentsHash } = require('../utils/validation');
+const { lcCreatedCounter, lcTransactionDuration } = require('../metrics');
 
 /**
  * Helper to log events to the audit table
@@ -31,64 +32,82 @@ const LCService = {
     // 0. API Level Validation
     validateLCCreation(data);
 
+    const end = lcTransactionDuration.startTimer({ operation: 'createLC' });
+
     // 1. Commit to Blockchain (Source of Truth)
-    const result = await FabricRepository.createLC(
-      data.id,
-      data.importer,
-      data.exporter,
-      data.issuingBank,
-      data.advisingBank,
-      data.amount.toString(),
-      data.currency,
-      data.expiry,
-      data.terms,
-      user.username
-    );
+    try {
+      const result = await FabricRepository.createLC(
+        data.id,
+        data.importer,
+        data.exporter,
+        data.issuingBank,
+        data.advisingBank,
+        data.amount.toString(),
+        data.currency,
+        data.expiry,
+        data.terms,
+        user.username
+      );
 
-    // 2. Mirror to Postgres (Off-chain store for searching)
-    await PostgresRepository.upsertLCMetadata({
-      id: data.id,
-      importer: data.importer,
-      exporter: data.exporter,
-      issuingBank: data.issuingBank,
-      advisingBank: data.advisingBank,
-      amount: data.amount,
-      currency: data.currency,
-      status: 'CREATED',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      lastEvent: 'createLC'
-    });
+      // 2. Mirror to Postgres (Off-chain store for searching)
+      await PostgresRepository.upsertLCMetadata({
+        id: data.id,
+        importer: data.importer,
+        exporter: data.exporter,
+        issuingBank: data.issuingBank,
+        advisingBank: data.advisingBank,
+        amount: data.amount,
+        currency: data.currency,
+        status: 'CREATED',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        lastEvent: 'createLC'
+      });
 
-    // 3. Audit Log
-    await logEvent(data.id, 'LC_CREATED', user, { amount: data.amount, currency: data.currency });
+      // 3. Audit Log
+      await logEvent(data.id, 'LC_CREATED', user, { amount: data.amount, currency: data.currency });
 
-    return result;
+      // 4. Metrics
+      lcCreatedCounter.inc({ msp_id: user.orgMsp, status: 'CREATED' });
+      end({ status: 'success' });
+
+      return result;
+    } catch (err) {
+      end({ status: 'error' });
+      throw err;
+    }
   },
 
   async issueLetterOfCredit(id, pricingData, user) {
-    const result = await FabricRepository.issueLC(id, pricingData, user.username);
-    const message = result.toString ? result.toString() : result;
+    const end = lcTransactionDuration.startTimer({ operation: 'issueLC' });
+    try {
+      const result = await FabricRepository.issueLC(id, pricingData, user.username);
+      const message = result.toString ? result.toString() : result;
 
-    let status = 'ISSUE_PENDING';
-    let eventType = 'LC_ISSUE_PROPOSED';
-    if (!message.includes('proposed')) {
-      status = 'ISSUED';
-      eventType = 'LC_ISSUED';
+      let status = 'ISSUE_PENDING';
+      let eventType = 'LC_ISSUE_PROPOSED';
+      if (!message.includes('proposed')) {
+        status = 'ISSUED';
+        eventType = 'LC_ISSUED';
+      }
+
+      await PostgresRepository.updateLCMetadata(id, {
+        status: status,
+        last_event: 'issueLC'
+      });
+
+      await logEvent(id, eventType, user, { message });
+
+      end({ status: 'success' });
+      return {
+        message: message,
+        status: status,
+        isProposal: message.includes('proposed')
+      };
+    } catch (err) {
+      end({ status: 'error' });
+      throw err;
     }
-
-    await PostgresRepository.updateLCMetadata(id, {
-      status: status,
-      last_event: 'issueLC'
-    });
-
-    await logEvent(id, eventType, user, { message });
-
-    return {
-      message: message,
-      status: status,
-      isProposal: message.includes('proposed')
-    };
   },
 
   async adviseLetterOfCredit(id, user) {
