@@ -481,6 +481,18 @@ func parseAmount(raw string) (float64, error) {
     return amount, nil
 }
 
+func isValidSHA256(hash string) bool {
+    if len(hash) != 64 {
+        return false
+    }
+    for _, r := range hash {
+        if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) {
+            return false
+        }
+    }
+    return true
+}
+
 func main() {
     err := shim.Start(new(SmartContract))
     if err != nil {

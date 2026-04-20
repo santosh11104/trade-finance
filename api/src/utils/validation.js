@@ -22,6 +22,20 @@ const validateLCCreation = (data) => {
   }
 };
 
+const validateDocumentsHash = (hash) => {
+  const schema = Joi.string().hex().length(64).required()
+    .messages({
+      'string.length': `Validation Error: Documents hash [${hash}] is invalid; expected a 64-character SHA-256 hex string`,
+      'string.hex': `Validation Error: Documents hash [${hash}] is invalid; expected a 64-character SHA-256 hex string`
+    });
+
+  const { error } = schema.validate(hash);
+  if (error) {
+    throw new Error(error.details[0].message);
+  }
+};
+
 module.exports = {
-  validateLCCreation
+  validateLCCreation,
+  validateDocumentsHash
 };
