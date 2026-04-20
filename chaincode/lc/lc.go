@@ -228,7 +228,15 @@ func (s *SmartContract) submitDocuments(APIstub shim.ChaincodeStubInterface, arg
     lc, err := s.fetchLC(APIstub, args[0])
     if err != nil { return shim.Error(err.Error()) }
     if lc.Status != "CONFIRMED" {
-        return shim.Error("LC must be CONFIRMED before shipment")
+        return shim.Error(fmt.Sprintf("Protocol Error: LC status must be [CONFIRMED] to submit documents, current status is [%s]", lc.Status))
+    }
+
+    expiryDate, _ := time.Parse(time.RFC3339, lc.Expiry)
+    txTimestamp, _ := APIstub.GetTxTimestamp()
+    now := time.Unix(txTimestamp.Seconds, int64(txTimestamp.Nanos)).UTC()
+
+    if now.After(expiryDate) {
+        return shim.Error(fmt.Sprintf("Validation Error: LC has expired on [%s], current transaction time is [%s]", lc.Expiry, now.Format(time.RFC3339)))
     }
 
     lc.Status = "SHIPPED"
@@ -466,6 +474,21 @@ func parseAmount(raw string) (float64, error) {
     _, err := fmt.Sscanf(raw, "%f", &amount)
     if err != nil {
         return 0, fmt.Errorf("invalid amount format")
+    }
+    if amount <= 0 {
+        return 0, fmt.Errorf("amount must be positive")
+    }
+    return amount, nil
+}
+
+func main() {
+    err := shim.Start(new(SmartContract))
+    if err != nil {
+        fmt.Printf("Error starting LC chaincode: %s\\n", err)
+        os.Exit(1)
+    }
+}
+ amount format")
     }
     if amount <= 0 {
         return 0, fmt.Errorf("amount must be positive")

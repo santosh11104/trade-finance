@@ -7,11 +7,25 @@ yarn-error.log*
 
 # Fabric artifacts and local files
 wallet/
+**/wallet/
 crypto-config/
+**/crypto-config/
 channel-artifacts/
 chaincode-package/
 peer-artifacts/
 pgdata/
+
+# Go
+**/*.out
+**/*.test
+**/*.exe
+chaincode/lc/lc
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # Docker Compose overrides
 docker-compose.override.yml

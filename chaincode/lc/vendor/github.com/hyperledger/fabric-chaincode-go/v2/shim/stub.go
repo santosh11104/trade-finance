@@ -29,7 +29,6 @@ type ChaincodeStub struct {
 	signedProposal             *peer.SignedProposal
 	proposal                   *peer.Proposal
 	validationParameterMetakey string
-	writeBatch                 *writeBatch
 
 	// Additional fields extracted from the signedProposal
 	creator   []byte
@@ -166,25 +165,9 @@ func (s *ChaincodeStub) GetState(key string) ([]byte, error) {
 	return s.handler.handleGetState(collection, key, s.ChannelID, s.TxID)
 }
 
-// GetMultipleStates documentation can be found in interfaces.go
-func (s *ChaincodeStub) GetMultipleStates(keys ...string) ([][]byte, error) {
-	// Access public data by setting the collection to empty string
-	collection := ""
-	return s.handler.handleGetMultipleStates(collection, keys, s.ChannelID, s.TxID)
-}
-
 // SetStateValidationParameter documentation can be found in interfaces.go
 func (s *ChaincodeStub) SetStateValidationParameter(key string, ep []byte) error {
-	return s.putStateMetadataEntry("", key, s.validationParameterMetakey, ep)
-}
-
-func (s *ChaincodeStub) putStateMetadataEntry(collection string, key string, metakey string, metadata []byte) error {
-	if s.writeBatch != nil {
-		s.writeBatch.PutStateMetadataEntry(collection, key, metakey, metadata)
-		return nil
-	}
-
-	return s.handler.handlePutStateMetadataEntry(collection, key, metakey, metadata, s.ChannelID, s.TxID)
+	return s.handler.handlePutStateMetadataEntry("", key, s.validationParameterMetakey, ep, s.ChannelID, s.TxID)
 }
 
 // GetStateValidationParameter documentation can be found in interfaces.go
@@ -201,22 +184,11 @@ func (s *ChaincodeStub) GetStateValidationParameter(key string) ([]byte, error) 
 
 // PutState documentation can be found in interfaces.go
 func (s *ChaincodeStub) PutState(key string, value []byte) error {
-	// Access public data by setting the collection to empty string
-	collection := ""
-
-	return s.putState(collection, key, value)
-}
-
-func (s *ChaincodeStub) putState(collection string, key string, value []byte) error {
 	if key == "" {
 		return errors.New("key must not be an empty string")
 	}
-
-	if s.writeBatch != nil {
-		s.writeBatch.PutState(collection, key, value)
-		return nil
-	}
-
+	// Access public data by setting the collection to empty string
+	collection := ""
 	return s.handler.handlePutState(collection, key, value, s.ChannelID, s.TxID)
 }
 
@@ -246,16 +218,6 @@ func (s *ChaincodeStub) GetQueryResult(query string) (StateQueryIteratorInterfac
 func (s *ChaincodeStub) DelState(key string) error {
 	// Access public data by setting the collection to empty string
 	collection := ""
-
-	return s.delState(collection, key)
-}
-
-func (s *ChaincodeStub) delState(collection string, key string) error {
-	if s.writeBatch != nil {
-		s.writeBatch.DelState(collection, key)
-		return nil
-	}
-
 	return s.handler.handleDelState(collection, key, s.ChannelID, s.TxID)
 }
 
@@ -267,14 +229,6 @@ func (s *ChaincodeStub) GetPrivateData(collection string, key string) ([]byte, e
 		return nil, fmt.Errorf("collection must not be an empty string")
 	}
 	return s.handler.handleGetState(collection, key, s.ChannelID, s.TxID)
-}
-
-// GetMultiplePrivateData documentation can be found in interfaces.go
-func (s *ChaincodeStub) GetMultiplePrivateData(collection string, keys ...string) ([][]byte, error) {
-	if collection == "" {
-		return nil, fmt.Errorf("collection must not be an empty string")
-	}
-	return s.handler.handleGetMultipleStates(collection, keys, s.ChannelID, s.TxID)
 }
 
 // GetPrivateDataHash documentation can be found in interfaces.go
@@ -290,8 +244,10 @@ func (s *ChaincodeStub) PutPrivateData(collection string, key string, value []by
 	if collection == "" {
 		return fmt.Errorf("collection must not be an empty string")
 	}
-
-	return s.putState(collection, key, value)
+	if key == "" {
+		return fmt.Errorf("key must not be an empty string")
+	}
+	return s.handler.handlePutState(collection, key, value, s.ChannelID, s.TxID)
 }
 
 // DelPrivateData documentation can be found in interfaces.go
@@ -299,8 +255,7 @@ func (s *ChaincodeStub) DelPrivateData(collection string, key string) error {
 	if collection == "" {
 		return fmt.Errorf("collection must not be an empty string")
 	}
-
-	return s.delState(collection, key)
+	return s.handler.handleDelState(collection, key, s.ChannelID, s.TxID)
 }
 
 // PurgePrivateData documentation can be found in interfaces.go
@@ -308,16 +263,6 @@ func (s *ChaincodeStub) PurgePrivateData(collection string, key string) error {
 	if collection == "" {
 		return fmt.Errorf("collection must not be an empty string")
 	}
-
-	return s.purgeState(collection, key)
-}
-
-func (s *ChaincodeStub) purgeState(collection string, key string) error {
-	if s.writeBatch != nil {
-		s.writeBatch.PurgeState(collection, key)
-		return nil
-	}
-
 	return s.handler.handlePurgeState(collection, key, s.ChannelID, s.TxID)
 }
 
@@ -390,7 +335,7 @@ func (s *ChaincodeStub) GetPrivateDataValidationParameter(collection, key string
 
 // SetPrivateDataValidationParameter documentation can be found in interfaces.go
 func (s *ChaincodeStub) SetPrivateDataValidationParameter(collection, key string, ep []byte) error {
-	return s.putStateMetadataEntry(collection, key, s.validationParameterMetakey, ep)
+	return s.handler.handlePutStateMetadataEntry(collection, key, s.validationParameterMetakey, ep, s.ChannelID, s.TxID)
 }
 
 // CommonIterator documentation can be found in interfaces.go
@@ -632,22 +577,6 @@ func (s *ChaincodeStub) GetQueryResultWithPagination(query string, pageSize int3
 		return nil, nil, err
 	}
 	return s.handleGetQueryResult(collection, query, metadata)
-}
-
-// --------- Batch State functions ----------
-
-// StartWriteBatch documentation can be found in interfaces.go
-func (s *ChaincodeStub) StartWriteBatch() {
-	if s.handler.usePeerWriteBatch && s.writeBatch == nil {
-		s.writeBatch = newWriteBatch()
-	}
-}
-
-// FinishWriteBatch documentation can be found in interfaces.go
-func (s *ChaincodeStub) FinishWriteBatch() error {
-	err := s.handler.sendBatch(s.ChannelID, s.TxID, s.writeBatch.Writes())
-	s.writeBatch = nil
-	return err
 }
 
 // Next ...

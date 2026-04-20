@@ -1,8 +1,12 @@
 const FabricRepository = require('../repositories/fabricRepository');
 const PostgresRepository = require('../repositories/postgresRepository');
+const { validateLCCreation } = require('../utils/validation');
 
 const LCService = {
   async createLetterOfCredit(data, user) {
+    // 0. API Level Validation
+    validateLCCreation(data);
+
     // 1. Commit to Blockchain (Source of Truth)
     const result = await FabricRepository.createLC(
       data.id,
@@ -70,6 +74,12 @@ const LCService = {
   },
 
   async submitShipmentDocuments(id, documentsHash, user) {
+    // 0. Preliminary Check (Optional but good for UX)
+    const lc = await FabricRepository.queryLC(id, user.username);
+    if (new Date(lc.expiry) < new Date()) {
+      throw new Error(`Validation Error: LC has expired on [${lc.expiry}]`);
+    }
+
     const result = await FabricRepository.submitDocuments(id, documentsHash, user.username);
     await PostgresRepository.updateLCMetadata(id, { status: 'DOCUMENTS_SUBMITTED', last_event: 'submitDocuments' });
     return result;
