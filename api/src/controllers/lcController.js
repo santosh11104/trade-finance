@@ -111,7 +111,7 @@ const LCController = {
 
   async cancelLC(req, res) {
     try {
-      const result = await LCService.cancelLC(req.params.id || req.body.id, req.user);
+      const result = await LCService.cancelLetterOfCredit(req.params.id || req.body.id, req.user);
       res.json({ success: true, payload: result });
     } catch (err) {
       res.status(400).json({ error: err.message });
