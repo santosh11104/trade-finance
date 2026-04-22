@@ -14,6 +14,7 @@ channel-artifacts/
 chaincode-package/
 peer-artifacts/
 pgdata/
+blockchain-api/network/config/tls-root-cas.pem
 
 # Go
 **/*.out

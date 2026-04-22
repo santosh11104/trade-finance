@@ -37,3 +37,8 @@ type LCEvent struct {
 	Actor  string `json:"actor"`
 	Time   string `json:"time"`
 }
+
+type LCLog struct {
+	Status    string `json:"status"`
+	Timestamp string `json:"timestamp"`
+}

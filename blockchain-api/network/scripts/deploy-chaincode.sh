@@ -25,7 +25,6 @@ function run_peer() {
     -w "${WORKDIR}" \
     -e HOME=/tmp \
     -e GOCACHE=/tmp/.cache/go-build \
-    -e FABRIC_CFG_PATH=/workspace/blockchain-api/network/config \
     -e CORE_PEER_TLS_ENABLED=true \
     -e CORE_PEER_LOCALMSPID="${CORE_PEER_LOCALMSPID}" \
     -e CORE_PEER_MSPCONFIGPATH="${CORE_PEER_MSPCONFIGPATH}" \
@@ -82,8 +81,8 @@ function approve_chaincode() {
   fi
 }
 
-# echo "Pulling required chaincode environment image"
-# docker pull hyperledger/fabric-ccenv:2.5
+echo "Pulling required chaincode environment image"
+docker pull hyperledger/fabric-ccenv:2.5
 
 echo "Packaging chaincode"
 run_peer lifecycle chaincode package ${CHAINCODE_PACKAGE} --path ${CHAINCODE_PATH} --lang golang --label ${CHAINCODE_LABEL}
@@ -97,7 +96,6 @@ install_chaincode Org4MSP peer0.org4.example.com org4.example.com 10051 blockcha
 PACKAGE_ID=$(docker run --rm -u "${USER_ID}" --network ${DOCKER_NETWORK} \
   -v "${ROOT_DIR}":/workspace \
   -w "${WORKDIR}" \
-  -e FABRIC_CFG_PATH=/workspace/blockchain-api/network/config \
   -e CORE_PEER_TLS_ENABLED=true \
   -e CORE_PEER_LOCALMSPID=Org1MSP \
   -e CORE_PEER_MSPCONFIGPATH=/workspace/blockchain-api/network/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp \

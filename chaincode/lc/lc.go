@@ -127,7 +127,10 @@ func (s *SmartContract) issueLC(APIstub shim.ChaincodeStubInterface, args []stri
     // Step 1: Importer or Bank proposes
     if lc.Status == "CREATED" {
         lc.Status = "ISSUE_PENDING"
-        lc.IssueProposedBy = args[2]
+        lc.IssueProposal = &ApprovalRecord{
+            ProposedBy: args[2],
+            Timestamp:  time.Now().UTC().Format(time.RFC3339),
+        }
         lc.History = append(lc.History, "ISSUE_PENDING")
         if err := s.persistLC(APIstub, lc); err != nil { return shim.Error(err.Error()) }
         return shim.Success([]byte("LC issue proposed, awaiting Issuing Bank approval"))
@@ -138,7 +141,10 @@ func (s *SmartContract) issueLC(APIstub shim.ChaincodeStubInterface, args []stri
         return shim.Error("only Issuing Bank can approve LC issue")
     }
     lc.Status = "ISSUED"
-    lc.IssueApprovedBy = args[2]
+    if lc.IssueProposal == nil {
+        lc.IssueProposal = &ApprovalRecord{}
+    }
+    lc.IssueProposal.ApprovedBy = args[2]
     lc.History = append(lc.History, "ISSUED")
     if err := s.persistLC(APIstub, lc); err != nil { return shim.Error(err.Error()) }
 
@@ -244,7 +250,10 @@ func (s *SmartContract) releasePayment(APIstub shim.ChaincodeStubInterface, args
 
     if lc.Status == "VERIFIED" {
         lc.Status = "PAYMENT_PENDING"
-        lc.PaymentProposedBy = args[2]
+        lc.PaymentProposal = &ApprovalRecord{
+            ProposedBy: args[2],
+            Timestamp:  time.Now().UTC().Format(time.RFC3339),
+        }
         lc.History = append(lc.History, "PAYMENT_PENDING")
         if err := s.persistLC(APIstub, lc); err != nil { return shim.Error(err.Error()) }
         return shim.Success([]byte("Payment release proposed, awaiting bank approval"))
@@ -254,7 +263,10 @@ func (s *SmartContract) releasePayment(APIstub shim.ChaincodeStubInterface, args
         return shim.Error("only Issuing Bank can finalize payment")
     }
     lc.Status = "PAID"
-    lc.PaymentApprovedBy = args[2]
+    if lc.PaymentProposal == nil {
+        lc.PaymentProposal = &ApprovalRecord{}
+    }
+    lc.PaymentProposal.ApprovedBy = args[2]
     lc.History = append(lc.History, "PAID")
     if err := s.persistLC(APIstub, lc); err != nil { return shim.Error(err.Error()) }
 

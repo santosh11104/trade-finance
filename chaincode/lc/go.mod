@@ -1,6 +1,8 @@
 module trade-finance-chaincode
 
-go 1.19
+go 1.22.0
+
+toolchain go1.22.12
 
 require (
 	github.com/hyperledger/fabric-chaincode-go v0.0.0-20240704073638-9fb89180dc17

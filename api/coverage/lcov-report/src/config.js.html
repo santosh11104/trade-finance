@@ -30,9 +30,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">71.42% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>30/42</span>
+                <span class='fraction'>44/44</span>
             </div>
         
             
@@ -96,15 +96,37 @@
 <a name='L31'></a><a href='#L31'>31</a>
 <a name='L32'></a><a href='#L32'>32</a>
 <a name='L33'></a><a href='#L33'>33</a>
-<a name='L34'></a><a href='#L34'>34</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">10x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -135,29 +157,40 @@ const dotenv = require('dotenv');
 const envPath = path.resolve(__dirname, '../../.env');
 const samplePath = path.resolve(__dirname, '../../.env.example');
 &nbsp;
-dotenv.config({ path: fs.existsSync(envPath) ? envPath : <span class="branch-1 cbranch-no" title="branch not covered" >samplePath </span>});
+dotenv.config({ path: fs.existsSync(envPath) ? envPath : samplePath });
 &nbsp;
 module.exports = {
-  port: process.env.PORT || <span class="branch-1 cbranch-no" title="branch not covered" >4000,</span>
-  jwtSecret: process.env.JWT_SECRET || <span class="branch-1 cbranch-no" title="branch not covered" >'supersecretkey',</span>
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN || <span class="branch-1 cbranch-no" title="branch not covered" >'1h',</span>
-  dbUrl: process.env.DATABASE_URL || <span class="branch-1 cbranch-no" title="branch not covered" >'postgres://postgres:postgres@localhost:5432/tradefinance',</span>
+  port: process.env.PORT || 4000,
+  jwtSecret: process.env.JWT_SECRET || 'supersecretkey',
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '1h',
+  dbUrl: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/tradefinance',
   fabric: {
-    walletPath: process.env.FABRIC_WALLET_PATH || <span class="branch-1 cbranch-no" title="branch not covered" >path.resolve(__dirname, '../wallet'),</span>
-    connectionProfile: path.resolve(__dirname, '../../blockchain-api/config/connection-profile.json'),
-    channelName: process.env.FABRIC_CHANNEL_NAME || <span class="branch-1 cbranch-no" title="branch not covered" >'tradechannel',</span>
-    chaincodeName: process.env.FABRIC_CHAINCODE_NAME || <span class="branch-1 cbranch-no" title="branch not covered" >'lccontract',</span>
-    userId: process.env.FABRIC_USER_ID || <span class="branch-1 cbranch-no" title="branch not covered" >'appUser',</span>
-    orgMsp: process.env.FABRIC_ORG_MSP || <span class="branch-1 cbranch-no" title="branch not covered" >'Org1MSP',</span>
+    // SWITCH: Local uses '../wallet' folder, Production can mount a K8s volume/PVC here
+    walletPath: process.env.FABRIC_WALLET_PATH || path.resolve(__dirname, '../wallet'),
+    
+    // SWITCH: Local uses the JSON file in the project, Production overrides via ENV variable
+    // In K8s, this would point to a mounted ConfigMap: /etc/fabric/connection.json
+    connectionProfile: process.env.FABRIC_CONNECTION_PROFILE || path.resolve(__dirname, '../../blockchain-api/config/connection-profile.json'),
+    
+    channelName: process.env.FABRIC_CHANNEL_NAME || 'tradechannel',
+    chaincodeName: process.env.FABRIC_CHAINCODE_NAME || 'lccontract',
+    
+    // Org-specific identity configuration
+    userId: process.env.FABRIC_USER_ID || 'appUser',
+    orgMsp: process.env.FABRIC_ORG_MSP || 'Org1MSP',
+    
+    // ... rest of CA config ...
     caName: process.env.FABRIC_CA_NAME || 'ca-org1',
-    caAdmin: process.env.FABRIC_CA_ADMIN || <span class="branch-1 cbranch-no" title="branch not covered" >'admin',</span>
-    caAdminPW: process.env.FABRIC_CA_ADMIN_PW || <span class="branch-1 cbranch-no" title="branch not covered" >'adminpw',</span>
+    caAdmin: process.env.FABRIC_CA_ADMIN || 'admin',
+    caAdminPW: process.env.FABRIC_CA_ADMIN_PW || 'adminpw',
     caAdminMap: {
       'Org1MSP': { id: process.env.FABRIC_CA_ADMIN_ORG1 || 'admin', pw: process.env.FABRIC_CA_ADMIN_PW_ORG1 || 'adminpw' },
       'Org2MSP': { id: process.env.FABRIC_CA_ADMIN_ORG2 || 'admin', pw: process.env.FABRIC_CA_ADMIN_PW_ORG2 || 'adminpw' },
       'Org3MSP': { id: process.env.FABRIC_CA_ADMIN_ORG3 || 'admin', pw: process.env.FABRIC_CA_ADMIN_PW_ORG3 || 'adminpw' },
       'Org4MSP': { id: process.env.FABRIC_CA_ADMIN_ORG4 || 'admin', pw: process.env.FABRIC_CA_ADMIN_PW_ORG4 || 'adminpw' },
     },
+    
+    // SWITCH: MUST be 'true' for local Docker Compose, MUST be 'false' for Kubernetes/Production
     discoveryEnabled: process.env.FABRIC_DISCOVERY_ENABLED !== 'false',
     discoveryAsLocalhost: process.env.FABRIC_DISCOVERY_AS_LOCALHOST === 'true',
   }
@@ -169,7 +202,7 @@ module.exports = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-20T11:23:19.641Z
+                at 2026-04-20T14:11:52.701Z
             </div>
         <script src="../prettify.js"></script>
         <script>
