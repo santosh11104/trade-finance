@@ -14,6 +14,7 @@ The system includes:
 - Hyperledger Explorer for blockchain visibility
 - Prometheus + Grafana for monitoring and metrics
 - OpenTelemetry + Jaeger for distributed tracing
+- Grafana Loki + Promtail for centralized structured logging
 - Docker Compose deployment for local development
 
 ## Repository Structure
@@ -67,9 +68,10 @@ After running `start-all.sh`, the following services are available:
 | Service | Port | URL | Description |
 |---------|------|-----|-------------|
 | **Hyperledger Explorer** | 8082 | http://localhost:8082 | Blockchain visibility (login: exploreradmin/exploreradminpw) |
-| **Grafana** | 3000 | http://localhost:3000 | Metrics dashboards (login: admin/admin) |
+| **Grafana** | 3000 | http://localhost:3000 | Metrics and Logs dashboards (login: admin/admin) |
 | **Prometheus** | 9090 | http://localhost:9090 | Metrics collection |
 | **Jaeger** | 16686 | http://localhost:16686 | Distributed tracing |
+| **Loki** | 3100 | http://localhost:3100 | Log aggregation server |
 | **cAdvisor** | 8081 | http://localhost:8081 | Container metrics |
 | **API Swagger** | 4000 | http://localhost:4000/api-docs | Interactive API documentation |
 
@@ -254,12 +256,10 @@ Each peer has its own CouchDB container for rich query support, enabling complex
 - **cAdvisor**: Container metrics and resource usage
 - Pre-built dashboard showing service status and system resources
 
-### 5. Distributed Tracing (OpenTelemetry + Jaeger)
-- **OpenTelemetry**: Auto-instrumentation for API requests
-- **Jaeger**: Trace visualization and request flow analysis
-- Tracks requests across API → Fabric → Chaincode
-- Supports HTTP, Express, and PostgreSQL tracing
-- Environment variables configured for OTLP export
+### 5. Distributed Tracing and Observability (The Three Pillars)
+- **Metrics**: Prometheus collects system and business metrics, visualized in Grafana.
+- **Tracing**: OpenTelemetry instruments the API and Jaeger visualizes request flows across services.
+- **Logs**: Winston provides structured JSON logging, shipped via Promtail to Grafana Loki for centralized search and analysis.
 
 ### 6. Private Data Collections
 - `pricingCollection` is shared only between Org1 and Org3.
@@ -272,6 +272,10 @@ Each peer has its own CouchDB container for rich query support, enabling complex
 - Syncs events to PostgreSQL audit logs
 - Off-chain database (`lc_metadata` table) for fast queries
 - Real-time metadata synchronization including proposal/approval tracking
+
+### 8. Enterprise Validation Suite
+- Comprehensive E2E integration tests validating the full LC lifecycle.
+- **Negative Role Testing**: Explicit validation that unauthorized roles are blocked with `403 Forbidden` responses, ensuring strict RBAC enforcement.
 
 ## Notes
 
