@@ -523,6 +523,31 @@ services:
     networks:
       - tradefinance
 
+  # Loki - Log Aggregation
+  loki:
+    image: grafana/loki:latest
+    container_name: tradefinance-loki
+    ports:
+      - 3100:3100
+    volumes:
+      - ./monitoring/loki/loki-config.yaml:/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - tradefinance
+
+  # Promtail - Log Shipper
+  promtail:
+    image: grafana/promtail:latest
+    container_name: tradefinance-promtail
+    volumes:
+      - /var/log:/var/log
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./monitoring/promtail/promtail-config.yaml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    networks:
+      - tradefinance
+
 networks:
   tradefinance:
     driver: bridge

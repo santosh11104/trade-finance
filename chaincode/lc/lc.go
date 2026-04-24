@@ -55,8 +55,8 @@ func (s *SmartContract) Invoke(APIstub shim.ChaincodeStubInterface) sc.Response 
 }
 
 func (s *SmartContract) createLC(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
-    if len(args) < 9 {
-        return shim.Error("Incorrect number of arguments. Expecting 9")
+    if len(args) < 10 {
+        return shim.Error("Incorrect number of arguments. Expecting 10 (id, importer, exporter, issuingBank, advisingBank, amount, currency, expiry, terms, actor)")
     }
 
     if ok, err := assertMSP(APIstub, Org1MSP); err != nil || !ok {
@@ -117,6 +117,9 @@ func (s *SmartContract) createLC(APIstub shim.ChaincodeStubInterface, args []str
 }
 
 func (s *SmartContract) issueLC(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
+    if len(args) < 3 {
+        return shim.Error("Incorrect number of arguments. Expecting 3 (id, pricingData, actor)")
+    }
     lc, err := s.fetchLC(APIstub, args[0])
     if err != nil { return shim.Error(err.Error()) }
 
@@ -124,14 +127,19 @@ func (s *SmartContract) issueLC(APIstub shim.ChaincodeStubInterface, args []stri
         return shim.Error("LC status must be CREATED or ISSUE_PENDING")
     }
 
+    txTimestamp, _ := APIstub.GetTxTimestamp()
+    now := time.Unix(txTimestamp.Seconds, int64(txTimestamp.Nanos)).UTC().Format(time.RFC3339)
+
     // Step 1: Importer or Bank proposes
     if lc.Status == "CREATED" {
         lc.Status = "ISSUE_PENDING"
         lc.IssueProposal = &ApprovalRecord{
             ProposedBy: args[2],
-            Timestamp:  time.Now().UTC().Format(time.RFC3339),
+            Timestamp:  now,
+            Data:       args[1],
         }
         lc.History = append(lc.History, "ISSUE_PENDING")
+        lc.UpdatedAt = now
         if err := s.persistLC(APIstub, lc); err != nil { return shim.Error(err.Error()) }
         return shim.Success([]byte("LC issue proposed, awaiting Issuing Bank approval"))
     }
@@ -146,6 +154,7 @@ func (s *SmartContract) issueLC(APIstub shim.ChaincodeStubInterface, args []stri
     }
     lc.IssueProposal.ApprovedBy = args[2]
     lc.History = append(lc.History, "ISSUED")
+    lc.UpdatedAt = now
     if err := s.persistLC(APIstub, lc); err != nil { return shim.Error(err.Error()) }
 
     s.emitEvent(APIstub, lc.ID, "ISSUED", args[2])
@@ -162,8 +171,11 @@ func (s *SmartContract) adviseLC(APIstub shim.ChaincodeStubInterface, args []str
         return shim.Error("LC must be ISSUED before advising")
     }
 
+    txTimestamp, _ := APIstub.GetTxTimestamp()
+    now := time.Unix(txTimestamp.Seconds, int64(txTimestamp.Nanos)).UTC().Format(time.RFC3339)
+
     lc.Status = "ADVISED"
-    lc.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+    lc.UpdatedAt = now
     lc.History = append(lc.History, "ADVISED")
     if err := s.persistLC(APIstub, lc); err != nil { return shim.Error(err.Error()) }
     return shim.Success(nil)
@@ -179,8 +191,11 @@ func (s *SmartContract) confirmLC(APIstub shim.ChaincodeStubInterface, args []st
         return shim.Error("LC must be ADVISED before confirming")
     }
 
+    txTimestamp, _ := APIstub.GetTxTimestamp()
+    now := time.Unix(txTimestamp.Seconds, int64(txTimestamp.Nanos)).UTC().Format(time.RFC3339)
+
     lc.Status = "CONFIRMED"
-    lc.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+    lc.UpdatedAt = now
     lc.History = append(lc.History, "CONFIRMED")
     if err := s.persistLC(APIstub, lc); err != nil { return shim.Error(err.Error()) }
     return shim.Success(nil)
@@ -217,7 +232,7 @@ func (s *SmartContract) submitDocuments(APIstub shim.ChaincodeStubInterface, arg
 
     lc.Status = "SHIPPED"
     lc.DocumentsHash = args[1]
-    lc.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+    lc.UpdatedAt = now.Format(time.RFC3339)
     lc.History = append(lc.History, "SHIPPED")
     if err := s.persistLC(APIstub, lc); err != nil { return shim.Error(err.Error()) }
     return shim.Success(nil)
@@ -233,14 +248,20 @@ func (s *SmartContract) verifyDocuments(APIstub shim.ChaincodeStubInterface, arg
         return shim.Error("LC must be SHIPPED before verifying documents")
     }
 
+    txTimestamp, _ := APIstub.GetTxTimestamp()
+    now := time.Unix(txTimestamp.Seconds, int64(txTimestamp.Nanos)).UTC().Format(time.RFC3339)
+
     lc.Status = "VERIFIED"
-    lc.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+    lc.UpdatedAt = now
     lc.History = append(lc.History, "VERIFIED")
     if err := s.persistLC(APIstub, lc); err != nil { return shim.Error(err.Error()) }
     return shim.Success(nil)
 }
 
 func (s *SmartContract) releasePayment(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
+    if len(args) < 3 {
+        return shim.Error("Incorrect number of arguments. Expecting 3 (id, paymentDetails, actor)")
+    }
     lc, err := s.fetchLC(APIstub, args[0])
     if err != nil { return shim.Error(err.Error()) }
 
@@ -248,13 +269,18 @@ func (s *SmartContract) releasePayment(APIstub shim.ChaincodeStubInterface, args
         return shim.Error("LC status must be VERIFIED or PAYMENT_PENDING")
     }
 
+    txTimestamp, _ := APIstub.GetTxTimestamp()
+    now := time.Unix(txTimestamp.Seconds, int64(txTimestamp.Nanos)).UTC().Format(time.RFC3339)
+
     if lc.Status == "VERIFIED" {
         lc.Status = "PAYMENT_PENDING"
         lc.PaymentProposal = &ApprovalRecord{
             ProposedBy: args[2],
-            Timestamp:  time.Now().UTC().Format(time.RFC3339),
+            Timestamp:  now,
+            Data:       args[1],
         }
         lc.History = append(lc.History, "PAYMENT_PENDING")
+        lc.UpdatedAt = now
         if err := s.persistLC(APIstub, lc); err != nil { return shim.Error(err.Error()) }
         return shim.Success([]byte("Payment release proposed, awaiting bank approval"))
     }
@@ -268,6 +294,7 @@ func (s *SmartContract) releasePayment(APIstub shim.ChaincodeStubInterface, args
     }
     lc.PaymentProposal.ApprovedBy = args[2]
     lc.History = append(lc.History, "PAID")
+    lc.UpdatedAt = now
     if err := s.persistLC(APIstub, lc); err != nil { return shim.Error(err.Error()) }
 
     return shim.Success([]byte("Payment released successfully"))
@@ -277,8 +304,11 @@ func (s *SmartContract) amendLC(APIstub shim.ChaincodeStubInterface, args []stri
     lc, err := s.fetchLC(APIstub, args[0])
     if err != nil { return shim.Error(err.Error()) }
     
+    txTimestamp, _ := APIstub.GetTxTimestamp()
+    now := time.Unix(txTimestamp.Seconds, int64(txTimestamp.Nanos)).UTC().Format(time.RFC3339)
+
     lc.Terms = lc.Terms + " | Amendment: " + args[1]
-    lc.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+    lc.UpdatedAt = now
     lc.History = append(lc.History, "AMENDED")
     if err := s.persistLC(APIstub, lc); err != nil { return shim.Error(err.Error()) }
     return shim.Success(nil)
@@ -288,8 +318,11 @@ func (s *SmartContract) cancelLC(APIstub shim.ChaincodeStubInterface, args []str
     lc, err := s.fetchLC(APIstub, args[0])
     if err != nil { return shim.Error(err.Error()) }
     
+    txTimestamp, _ := APIstub.GetTxTimestamp()
+    now := time.Unix(txTimestamp.Seconds, int64(txTimestamp.Nanos)).UTC().Format(time.RFC3339)
+
     lc.Status = "CANCELLED"
-    lc.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+    lc.UpdatedAt = now
     lc.History = append(lc.History, "CANCELLED")
     if err := s.persistLC(APIstub, lc); err != nil { return shim.Error(err.Error()) }
     return shim.Success(nil)
@@ -350,7 +383,9 @@ func (s *SmartContract) persistLC(APIstub shim.ChaincodeStubInterface, lc LC) er
 }
 
 func (s *SmartContract) emitEvent(APIstub shim.ChaincodeStubInterface, lcID string, action string, actor string) {
-    event := LCEvent{LCID: lcID, Action: action, Actor: actor, Time: time.Now().UTC().Format(time.RFC3339)}
+    txTimestamp, _ := APIstub.GetTxTimestamp()
+    now := time.Unix(txTimestamp.Seconds, int64(txTimestamp.Nanos)).UTC().Format(time.RFC3339)
+    event := LCEvent{LCID: lcID, Action: action, Actor: actor, Time: now}
     data, _ := json.Marshal(event)
     APIstub.SetEvent("LCEvent", data)
 }

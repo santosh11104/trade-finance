@@ -104,10 +104,12 @@ bash deploy-chaincode.sh
 
 log_info "Setting up API wallet and identities..."
 cd "${ROOT_DIR}/api" && node create-wallet.js
+log_info "Synchronizing database identities with network certificates..."
+cd "${ROOT_DIR}/api" && node sync-db-with-crypto.js
 
-log_info "Starting monitoring and observability services (Explorer, Grafana, Jaeger)..."
+log_info "Starting monitoring and observability services (Explorer, Grafana, Jaeger, Loki, Promtail)..."
 cd "${NETWORK_DIR}"
-docker compose --env-file "${ROOT_DIR}/.env" up -d prometheus grafana jaeger explorerdb.mynetwork.com explorer.mynetwork.com
+docker compose --env-file "${ROOT_DIR}/.env" up -d prometheus grafana jaeger explorerdb.mynetwork.com explorer.mynetwork.com loki promtail
 
 log_info "Finalizing services initialization..."
 sleep 10

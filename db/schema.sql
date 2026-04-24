@@ -33,3 +33,11 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     source VARCHAR(64) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
+
+CREATE TABLE IF NOT EXISTS fabric_identities (
+    username VARCHAR(128) PRIMARY KEY,
+    certificate TEXT NOT NULL,
+    encrypted_private_key TEXT NOT NULL,
+    msp_id VARCHAR(64) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);

@@ -120,4 +120,65 @@ describe('E2E LC Lifecycle Integration', () => {
     expect(response.status).toBe(400);
     expect(response.body.error).toContain('expired');
   });
+
+  describe('Role Enforcement (Negative Tests)', () => {
+    const bankToken = jwt.sign(
+      { username: 'test-bank', role: 'bank', orgMsp: 'Org3MSP' },
+      config.jwtSecret
+    );
+    const importerToken = jwt.sign(
+      { username: 'test-importer', role: 'importer', orgMsp: 'Org1MSP' },
+      config.jwtSecret
+    );
+    const exporterToken = jwt.sign(
+      { username: 'test-exporter', role: 'exporter', orgMsp: 'Org2MSP' },
+      config.jwtSecret
+    );
+
+    it('Should block Bank from creating LC (Only Importer can create)', async () => {
+      FabricRepository.createLC.mockRejectedValue(new Error('Permission Denied: Only Importers can create LC'));
+
+      const response = await request(app)
+        .post('/lc/create')
+        .set('Authorization', `Bearer ${bankToken}`)
+        .send({
+          id: 'LC-FAIL-1',
+          importer: 'Org1',
+          exporter: 'Org2',
+          issuingBank: 'Org3',
+          advisingBank: 'Org4',
+          amount: 1000,
+          currency: 'USD',
+          expiry: expiryDate,
+          terms: 'CIF'
+        });
+
+      expect(response.status).toBe(403);
+      expect(response.body.error).toContain('Forbidden');
+    });
+
+    it('Should block Importer from shipping goods (Only Exporter can ship)', async () => {
+      FabricRepository.submitDocuments.mockRejectedValue(new Error('Permission Denied: Only Exporters can submit documents'));
+
+      const response = await request(app)
+        .post('/lc/ship')
+        .set('Authorization', `Bearer ${importerToken}`)
+        .send({ id: lcId, documentsHash: docHash });
+
+      expect(response.status).toBe(403);
+      expect(response.body.error).toContain('Forbidden');
+    });
+
+    it('Should block Exporter from approving issue (Only Bank can approve)', async () => {
+      FabricRepository.issueLC.mockRejectedValue(new Error('Permission Denied: Only Banks can approve LC issuance'));
+
+      const response = await request(app)
+        .post('/lc/issue')
+        .set('Authorization', `Bearer ${exporterToken}`)
+        .send({ id: lcId, pricingData: { fee: 100 } });
+
+      expect(response.status).toBe(403);
+      expect(response.body.error).toContain('Forbidden');
+    });
+  });
 });

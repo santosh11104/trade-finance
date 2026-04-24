@@ -95,11 +95,11 @@ const FabricRepository = {
   // --- Domain Specific Methods ---
 
   async createLC(id, importer, exporter, issuingBank, advisingBank, amount, currency, expiry, terms, userId) {
-    return this.submit('createLC', [id, importer, exporter, issuingBank, advisingBank, amount, currency, expiry, terms], userId);
+    return this.submit('createLC', [id, importer, exporter, issuingBank, advisingBank, amount, currency, expiry, terms, userId], userId);
   },
 
   async issueLC(id, pricingData, userId) {
-    return this.submit('issueLC', [id, pricingData], userId);
+    return this.submit('issueLC', [id, pricingData, userId], userId);
   },
 
   async adviseLC(id, userId) {
@@ -119,7 +119,7 @@ const FabricRepository = {
   },
 
   async releasePayment(id, paymentDetails, userId) {
-    return this.submit('releasePayment', [id, paymentDetails], userId);
+    return this.submit('releasePayment', [id, paymentDetails, userId], userId);
   },
 
   async amendLC(id, amendmentNote, userId) {

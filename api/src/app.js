@@ -7,6 +7,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const Joi = require('joi');
 const config = require('./config');
+const logger = require('./utils/logger');
 const { signToken, authorize, permit } = require('./auth');
 const { db, initDb } = require('./db');
 const caClient = require('./caClient');
@@ -113,7 +114,7 @@ app.post('/auth/register', authLimiter, authorize, permit('admin'), validate(sch
     try {
       await caClient.registerAndEnrollUser(username, role, orgMsp);
     } catch (caErr) {
-      console.error(`Fabric CA registration failed for ${username}:`, caErr);
+      logger.error(`Fabric CA registration failed for ${username}`, { error: caErr.message });
       return res.status(500).json({ error: `User created in DB but Fabric CA registration failed: ${caErr.message}` });
     }
 
@@ -155,21 +156,21 @@ app.post('/auth/login', authLimiter, validate(schemas.login), async (req, res) =
 app.use('/lc', authorize, lcRoutes);
 
 app.use((err, req, res, next) => {
-  console.error(err);
+  logger.error('Unhandled exception occurred', { error: err.message, stack: err.stack });
   res.status(500).json({ error: 'Internal server error' });
 });
 
 const start = async () => {
   try {
     await initDb();
-    await caClient.enrollAllAdmins();
-    await seedDatabase();
+    // await caClient.enrollAllAdmins();
+    // await seedDatabase();
     await eventListener.startEventListener();
     app.listen(config.port, () => {
-      console.log(`Trade Finance API listening on port ${config.port}`);
+      logger.info(`Trade Finance API listening on port ${config.port}`);
     });
   } catch (err) {
-    console.error('Failed to start API', err);
+    logger.error('Failed to start API', { error: err.message });
     process.exit(1);
   }
 };

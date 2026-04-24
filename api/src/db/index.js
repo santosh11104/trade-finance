@@ -26,7 +26,11 @@ async function initDb() {
       status VARCHAR(32),
       created_at TIMESTAMPTZ,
       updated_at TIMESTAMPTZ,
-      last_event VARCHAR(64)
+      last_event VARCHAR(64),
+      issue_proposed_by VARCHAR(64),
+      issue_approved_by VARCHAR(64),
+      payment_proposed_by VARCHAR(64),
+      payment_approved_by VARCHAR(64)
     );`);
 
     await db.none(`CREATE TABLE IF NOT EXISTS audit_logs (

@@ -76,7 +76,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"LC1001\",\n  \"importer\": \"ImporterA\",\n  \"exporter\": \"ExporterB\",\n  \"issuingBank\": \"BankC\",\n  \"advisingBank\": \"BankD\",\n  \"amount\": 95000,\n  \"currency\": \"USD\",\n  \"expiry\": \"2026-12-31\",\n  \"terms\": \"Shipment within 30 days\"\n}"
+              "raw": "{\n  \"id\": \"LC1001\",\n  \"importer\": \"ImporterA\",\n  \"exporter\": \"ExporterB\",\n  \"issuingBank\": \"BankC\",\n  \"advisingBank\": \"BankD\",\n  \"amount\": 95000,\n  \"currency\": \"USD\",\n  \"expiry\": \"2026-12-31T23:59:59Z\",\n  \"terms\": \"Shipment within 30 days\"\n}"
             },
             "url": { "raw": "http://localhost:4000/lc/create", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "create"] },
             "description": "Status: CREATED. Initiated by Importer (Org1)."
@@ -140,7 +140,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id\": \"LC1001\",\n  \"documentsHash\": \"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n}"
+              "raw": "{\n  \"id\": \"LC1001\",\n  \"documentsHash\": \"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"\n}"
             },
             "url": { "raw": "http://localhost:4000/lc/ship", "protocol": "http", "host": ["localhost"], "port": "4000", "path": ["lc", "ship"] },
             "description": "Status: SHIPPED. Performed by Exporter (Org2). Documents stored in private data collection."

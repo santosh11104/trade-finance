@@ -11,11 +11,8 @@ async function createWallet() {
 
   const idPath = path.join(walletPath, 'appUser.id');
 
-  // Check if identity already exists
-  if (fs.existsSync(idPath)) {
-    console.log('Identity appUser already exists in wallet');
-    return;
-  }
+  // Always update the identity to ensure certificates match the current network
+  console.log('Updating identity appUser in wallet...');
 
   // Read the certificate and private key
   const certPath = path.join(cryptoConfigPath, 'msp/signcerts/User1@org1.example.com-cert.pem');

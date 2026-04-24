@@ -1,5 +1,6 @@
 const FabricRepository = require('../repositories/fabricRepository');
 const PostgresRepository = require('../repositories/postgresRepository');
+const logger = require('../utils/logger');
 const { validateLCCreation, validateDocumentsHash } = require('../utils/validation');
 const { lcCreatedCounter, lcTransactionDuration } = require('../metrics');
 
@@ -20,10 +21,10 @@ async function logEvent(lcId, eventType, user, details = {}) {
         ...details
       }
     });
+
+    logger.info(`LC Event: ${eventType}`, { lcId, user: user.username, role: user.role, ...details });
   } catch (err) {
-    console.error(`Failed to create audit log for ${eventType}:`, err);
-    // We don't throw here to avoid failing the main transaction if logging fails,
-    // though in a strict system you might want to.
+    logger.error(`Failed to create audit log for ${eventType}`, { error: err.message, lcId });
   }
 }
 
