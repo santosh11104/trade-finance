@@ -23,6 +23,10 @@ jobs:
         working-directory: api
         run: npm ci
 
+      - name: Run API tests
+        working-directory: api
+        run: npm test
+
       - name: Validate API package
         working-directory: api
         run: npm ls
