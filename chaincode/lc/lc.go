@@ -370,7 +370,7 @@ func (s *SmartContract) getLCStatusHistory(APIstub shim.ChaincodeStubInterface, 
 func (s *SmartContract) fetchLC(APIstub shim.ChaincodeStubInterface, id string) (LC, error) {
     data, err := APIstub.GetState(id)
     if err != nil || data == nil {
-        return LC{}, fmt.Errorf("LC [%s] not found", id)
+        return LC{}, fmt.Errorf("DEBUG_VERSION_1_3: LC [%s] not found", id)
     }
     var lc LC
     json.Unmarshal(data, &lc)

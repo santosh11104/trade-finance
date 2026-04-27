@@ -10,6 +10,13 @@ const cryptoRoot = path.join(projectRoot, 'blockchain-api/network/crypto-config'
 
 const userMapping = [
   {
+    appUsername: 'admin',
+    cryptoUser: 'Admin@org1.example.com',
+    org: 'org1.example.com',
+    mspId: 'Org1MSP',
+    role: 'admin'
+  },
+  {
     appUsername: 'importer1',
     cryptoUser: 'User1@org1.example.com',
     org: 'org1.example.com',
@@ -94,19 +101,6 @@ async function sync() {
     }
 
     console.log('Successfully synced all identities from crypto-config to database.');
-
-    console.log('Bootstrapping API administrator...');
-    const adminPasswordHash = await bcrypt.hash('password123', 10);
-    await db.none(
-      `INSERT INTO users (username, password_hash, role, org_msp)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (username) DO UPDATE
-       SET password_hash = EXCLUDED.password_hash,
-           role = EXCLUDED.role,
-           org_msp = EXCLUDED.org_msp`,
-      ['admin', adminPasswordHash, 'admin', 'Org1MSP']
-    );
-    console.log('API administrator bootstrapped successfully.');
   } catch (err) {
     console.error('Error syncing identities:', err);
     process.exit(1);

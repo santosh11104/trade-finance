@@ -1,0 +1,27 @@
+# Core configuration for Hyperledger Fabric Peer
+Peer:
+  TLS:
+    Enabled: true
+    CertificateFiles:
+      - /etc/hyperledger/fabric/tls/server.crt
+    KeyFile: /etc/hyperledger/fabric/tls/server.key
+    RootCerts:
+      - /etc/hyperledger/fabric/tls/ca-chain.pem
+  Organization:
+    MSPID: Org1MSP
+  StateDB:
+    Namespace:couchdb
+  General:
+    ChaincodeId: LC
+    ListenAddress: 0.0.0.0:7051
+    ExternalEndpoint: peer0.org1.example.com:7051
+
+BCCSP:
+  Default:
+    # Use the standard software-based cryptographic provider
+    Library: bccsp_ecdsa
+
+Orderer:
+  General:
+    ListenAddress: 0.0.0.0:7050
+    ExternalEndpoint: orderer.example.com:7050

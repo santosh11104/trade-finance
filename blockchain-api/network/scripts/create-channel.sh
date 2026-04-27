@@ -15,11 +15,10 @@ function run_peer() {
     --network ${DOCKER_NETWORK} \
     -v "${ROOT_DIR}":/workspace \
     -w "${WORKDIR}" \
-    -e FABRIC_CFG_PATH=/workspace/blockchain-api/network/config \
     -e CORE_PEER_TLS_ENABLED=true \
     -e CORE_PEER_LOCALMSPID="${CORE_PEER_LOCALMSPID}" \
-    -e CORE_PEER_MSPCONFIGPATH="/workspace/${CORE_PEER_MSPCONFIGPATH}" \
-    -e CORE_PEER_TLS_ROOTCERT_FILE="/workspace/${CORE_PEER_TLS_ROOTCERT_FILE}" \
+    -e CORE_PEER_MSPCONFIGPATH="${CORE_PEER_MSPCONFIGPATH}" \
+    -e CORE_PEER_TLS_ROOTCERT_FILE="${CORE_PEER_TLS_ROOTCERT_FILE}" \
     -e CORE_PEER_ADDRESS="${CORE_PEER_ADDRESS}" \
     hyperledger/fabric-tools:2.5 peer "$@"
 }
@@ -32,8 +31,8 @@ function createChannel() {
   local ORG_DOMAIN=$5
 
   CORE_PEER_LOCALMSPID=${ORG_MSP}
-  CORE_PEER_MSPCONFIGPATH="blockchain-api/network/crypto-config/${MSP_PATH}/users/Admin@${ORG_DOMAIN}/msp"
-  CORE_PEER_TLS_ROOTCERT_FILE="blockchain-api/network/config/tls-root-cas.pem"
+  CORE_PEER_MSPCONFIGPATH="/workspace/blockchain-api/network/crypto-config/${MSP_PATH}/users/Admin@${ORG_DOMAIN}/msp"
+  CORE_PEER_TLS_ROOTCERT_FILE="/workspace/blockchain-api/network/config/tls-root-cas.pem"
   CORE_PEER_ADDRESS="${PEER}:${PORT}"
 
   if [ -f ./channel-artifacts/${CHANNEL_NAME}.block ]; then
@@ -56,8 +55,8 @@ function joinChannel() {
   local ORG_DOMAIN=$5
 
   CORE_PEER_LOCALMSPID=${ORG_MSP}
-  CORE_PEER_MSPCONFIGPATH="blockchain-api/network/crypto-config/${MSP_PATH}/users/Admin@${ORG_DOMAIN}/msp"
-  CORE_PEER_TLS_ROOTCERT_FILE="blockchain-api/network/config/tls-root-cas.pem"
+  CORE_PEER_MSPCONFIGPATH="/workspace/blockchain-api/network/crypto-config/${MSP_PATH}/users/Admin@${ORG_DOMAIN}/msp"
+  CORE_PEER_TLS_ROOTCERT_FILE="/workspace/blockchain-api/network/config/tls-root-cas.pem"
   CORE_PEER_ADDRESS="${PEER}:${PORT}"
 
   echo "Joining ${PEER} to channel"

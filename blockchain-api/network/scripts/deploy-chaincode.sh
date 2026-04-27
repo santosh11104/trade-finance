@@ -4,9 +4,33 @@ set -e
 ROOT_DIR=$(cd "$(dirname "$0")/../../.." && pwd)
 WORKDIR=/workspace/blockchain-api/network
 CHANNEL_NAME=tradechannel
+VERSION_FILE=".cc_version"
+
+# Load version and sequence from file if it exists
+if [ -f "$VERSION_FILE" ]; then
+    source "$VERSION_FILE"
+    # Increment Version (Major.Minor)
+    MAJOR=$(echo $VERSION | cut -d. -f1)
+    MINOR=$(echo $VERSION | cut -d. -f2)
+    MINOR=$((MINOR + 1))
+    VERSION="$MAJOR.$MINOR"
+
+    # Increment Sequence (Crucial for upgrades in Fabric 2.x)
+    SEQUENCE=$((SEQUENCE + 1))
+else
+    VERSION="1.0"
+    SEQUENCE=1
+fi
+
+# Save back to file
+echo "VERSION=\"$VERSION\"" > "$VERSION_FILE"
+echo "SEQUENCE=$SEQUENCE" >> "$VERSION_FILE"
+
+echo "Automated Versioning: Using Version $VERSION, Sequence $SEQUENCE"
+
 CHAINCODE_NAME=lccontract
-CHAINCODE_VERSION=${CHAINCODE_VERSION:-1.0}
-CHAINCODE_SEQUENCE=${CHAINCODE_SEQUENCE:-1}
+CHAINCODE_VERSION=$VERSION
+CHAINCODE_SEQUENCE=$SEQUENCE
 CHAINCODE_LABEL=${CHAINCODE_NAME}_${CHAINCODE_VERSION}
 CHAINCODE_PATH=/workspace/chaincode/lc
 CHAINCODE_PACKAGE=./chaincode-package/lccontract.tar.gz

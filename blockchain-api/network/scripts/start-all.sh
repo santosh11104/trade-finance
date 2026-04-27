@@ -99,6 +99,9 @@ sleep 10
 log_info "Creating channel and joining all peers..."
 bash create-channel.sh
 
+log_info "Resetting chaincode version for fresh deployment..."
+rm -f "${SCRIPTS_DIR}/.cc_version"
+
 log_info "Deploying Letter of Credit chaincode..."
 bash deploy-chaincode.sh
 
