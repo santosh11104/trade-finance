@@ -105,13 +105,13 @@ describe('FabricRepository', () => {
     it('should call createLC', async () => {
       mockContract.submitTransaction.mockResolvedValue(Buffer.from('lc-created'));
       await FabricRepository.createLC('id', 'imp', 'exp', 'bank1', 'bank2', '100', 'USD', '2023-12-31', 'terms', 'user1');
-      expect(mockContract.submitTransaction).toHaveBeenCalledWith('createLC', 'id', 'imp', 'exp', 'bank1', 'bank2', '100', 'USD', '2023-12-31', 'terms');
+      expect(mockContract.submitTransaction).toHaveBeenCalledWith('createLC', 'id', 'imp', 'exp', 'bank1', 'bank2', '100', 'USD', '2023-12-31', 'terms', 'user1');
     });
 
     it('should call issueLC', async () => {
       mockContract.submitTransaction.mockResolvedValue(Buffer.from('lc-issued'));
       await FabricRepository.issueLC('id', 'pricing', 'user1');
-      expect(mockContract.submitTransaction).toHaveBeenCalledWith('issueLC', 'id', 'pricing');
+      expect(mockContract.submitTransaction).toHaveBeenCalledWith('issueLC', 'id', 'pricing', 'user1');
     });
 
     it('should call queryLC', async () => {
