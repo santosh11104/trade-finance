@@ -62,6 +62,9 @@ func (s *SmartContract) createLC(APIstub shim.ChaincodeStubInterface, args []str
     if ok, err := assertMSP(APIstub, Org1MSP); err != nil || !ok {
         return shim.Error("only Importer can create LC")
     }
+    if ok, err := checkRole(APIstub, RoleAdmin); err != nil || !ok {
+        return shim.Error("only Importer Admin can create LC")
+    }
 
     lcID := args[0]
     existing, _ := APIstub.GetState(lcID)
@@ -148,6 +151,9 @@ func (s *SmartContract) issueLC(APIstub shim.ChaincodeStubInterface, args []stri
     if ok, err := assertMSP(APIstub, Org3MSP); err != nil || !ok {
         return shim.Error("only Issuing Bank can approve LC issue")
     }
+    if ok, err := checkRole(APIstub, RoleAdmin); err != nil || !ok {
+        return shim.Error("only Bank Admin can approve LC issue")
+    }
     lc.Status = "ISSUED"
     if lc.IssueProposal == nil {
         lc.IssueProposal = &ApprovalRecord{}
@@ -164,6 +170,9 @@ func (s *SmartContract) issueLC(APIstub shim.ChaincodeStubInterface, args []stri
 func (s *SmartContract) adviseLC(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
     if ok, err := assertMSP(APIstub, Org4MSP); err != nil || !ok {
         return shim.Error("only Advising Bank can advise LC")
+    }
+    if ok, err := checkRole(APIstub, RoleAdmin); err != nil || !ok {
+        return shim.Error("only Bank Admin can advise LC")
     }
     lc, err := s.fetchLC(APIstub, args[0])
     if err != nil { return shim.Error(err.Error()) }
@@ -184,6 +193,9 @@ func (s *SmartContract) adviseLC(APIstub shim.ChaincodeStubInterface, args []str
 func (s *SmartContract) confirmLC(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
     if ok, err := assertMSP(APIstub, Org4MSP); err != nil || !ok {
         return shim.Error("only Advising Bank can confirm LC")
+    }
+    if ok, err := checkRole(APIstub, RoleAdmin); err != nil || !ok {
+        return shim.Error("only Bank Admin can confirm LC")
     }
     lc, err := s.fetchLC(APIstub, args[0])
     if err != nil { return shim.Error(err.Error()) }
@@ -215,6 +227,9 @@ func (s *SmartContract) submitDocuments(APIstub shim.ChaincodeStubInterface, arg
     if ok, err := assertMSP(APIstub, Org2MSP); err != nil || !ok {
         return shim.Error("only Exporter can submit documents")
     }
+    if ok, err := checkRole(APIstub, RoleOperator); err != nil || !ok {
+        return shim.Error("only Exporter Operator can submit documents")
+    }
 
     lc, err := s.fetchLC(APIstub, args[0])
     if err != nil { return shim.Error(err.Error()) }
@@ -241,6 +256,9 @@ func (s *SmartContract) submitDocuments(APIstub shim.ChaincodeStubInterface, arg
 func (s *SmartContract) verifyDocuments(APIstub shim.ChaincodeStubInterface, args []string) sc.Response {
     if ok, err := assertMSP(APIstub, Org3MSP); err != nil || !ok {
         return shim.Error("only Issuing Bank can verify documents")
+    }
+    if ok, err := checkRole(APIstub, RoleAdmin); err != nil || !ok {
+        return shim.Error("only Bank Admin can verify documents")
     }
     lc, err := s.fetchLC(APIstub, args[0])
     if err != nil { return shim.Error(err.Error()) }
@@ -287,6 +305,9 @@ func (s *SmartContract) releasePayment(APIstub shim.ChaincodeStubInterface, args
 
     if ok, err := assertMSP(APIstub, Org3MSP); err != nil || !ok {
         return shim.Error("only Issuing Bank can finalize payment")
+    }
+    if ok, err := checkRole(APIstub, RoleAdmin); err != nil || !ok {
+        return shim.Error("only Bank Admin can finalize payment")
     }
     lc.Status = "PAID"
     if lc.PaymentProposal == nil {
