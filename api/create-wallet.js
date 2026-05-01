@@ -2,7 +2,6 @@ const fs = require('fs');
 const path = require('path');
 
 const walletPath = path.resolve(__dirname, 'wallet');
-const cryptoConfigPath = path.resolve(__dirname, '../blockchain-api/network/crypto-config/peerOrganizations/org1.example.com/users/User1@org1.example.com');
 
 async function createWallet() {
   if (!fs.existsSync(walletPath)) {
@@ -14,9 +13,9 @@ async function createWallet() {
   // Always update the identity to ensure certificates match the current network
   console.log('Updating identity appUser in wallet...');
 
-  // Read the certificate and private key
-  const certPath = path.join(cryptoConfigPath, 'msp/signcerts/User1@org1.example.com-cert.pem');
-  const keyDir = path.join(cryptoConfigPath, 'msp/keystore');
+  // Read the certificate and private key from CA-enrolled wallet
+  const certPath = path.join(walletPath, 'appUser/msp/signcerts/cert.pem');
+  const keyDir = path.join(walletPath, 'appUser/msp/keystore');
   
   if (!fs.existsSync(certPath) || !fs.existsSync(keyDir)) {
     console.log('Identity files not found at expected paths. Skipping wallet creation.');

@@ -1,49 +1,18 @@
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
-require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const { db, initDb } = require('./src/db');
 const { encrypt } = require('./src/cryptoUtils');
 
-const projectRoot = path.resolve(__dirname, '..');
-const cryptoRoot = path.join(projectRoot, 'blockchain-api/network/crypto-config');
+const walletPath = path.resolve(__dirname, 'wallet');
 
 const userMapping = [
-  {
-    appUsername: 'admin',
-    cryptoUser: 'Admin@org1.example.com',
-    org: 'org1.example.com',
-    mspId: 'Org1MSP',
-    role: 'admin'
-  },
-  {
-    appUsername: 'importer1',
-    cryptoUser: 'User1@org1.example.com',
-    org: 'org1.example.com',
-    mspId: 'Org1MSP',
-    role: 'importer'
-  },
-  {
-    appUsername: 'exporter1',
-    cryptoUser: 'User1@org2.example.com',
-    org: 'org2.example.com',
-    mspId: 'Org2MSP',
-    role: 'exporter'
-  },
-  {
-    appUsername: 'bank1',
-    cryptoUser: 'User1@org3.example.com',
-    org: 'org3.example.com',
-    mspId: 'Org3MSP',
-    role: 'bank'
-  },
-  {
-    appUsername: 'bank2',
-    cryptoUser: 'User1@org4.example.com',
-    org: 'org4.example.com',
-    mspId: 'Org4MSP',
-    role: 'bank'
-  },
+  { appUsername: 'admin', mspId: 'Org1MSP', role: 'admin' },
+  { appUsername: 'importer1', mspId: 'Org1MSP', role: 'admin' },
+  { appUsername: 'exporter1', mspId: 'Org2MSP', role: 'exporter' },
+  { appUsername: 'bank1', mspId: 'Org3MSP', role: 'bank' },
+  { appUsername: 'bank2', mspId: 'Org4MSP', role: 'bank' },
 ];
 
 async function sync() {
@@ -51,27 +20,40 @@ async function sync() {
     console.log('Initializing database schema...');
     await initDb();
 
-    console.log('Syncing database identities directly from crypto-config...');
+    console.log('Syncing database identities from api/wallet...');
 
     for (const user of userMapping) {
-      const userDir = path.join(cryptoRoot, 'peerOrganizations', user.org, 'users', user.cryptoUser);
+      const userWalletDir = path.join(walletPath, user.appUsername);
 
-      if (!fs.existsSync(userDir)) {
-        console.warn(`User directory not found for ${user.appUsername} at ${userDir}`);
+      if (!fs.existsSync(userWalletDir)) {
+        console.warn(`Wallet directory not found for ${user.appUsername} at ${userWalletDir}`);
         continue;
       }
 
-      const certPath = path.join(userDir, 'msp/signcerts', `${user.cryptoUser}-cert.pem`);
-      const keyDir = path.join(userDir, 'msp/keystore');
+      const certPath = path.join(userWalletDir, 'msp/signcerts/cert.pem');
+      const keyDir = path.join(userWalletDir, 'msp/keystore');
 
       if (!fs.existsSync(certPath) || !fs.existsSync(keyDir)) {
-        console.warn(`Cert or key missing for ${user.appUsername}`);
+        console.warn(`Cert or key missing in wallet for ${user.appUsername}`);
         continue;
       }
 
       const cert = fs.readFileSync(certPath, 'utf8');
-      const keyFiles = fs.readdirSync(keyDir);
-      const key = fs.readFileSync(path.join(keyDir, keyFiles[0]), 'utf8');
+      
+      const keyFiles = fs.readdirSync(keyDir)
+        .filter(file => file.endsWith('_sk'))
+        .map(file => ({
+          name: file,
+          time: fs.statSync(path.join(keyDir, file)).mtime.getTime()
+        }))
+        .sort((a, b) => b.time - a.time);
+
+      if (keyFiles.length === 0) {
+        console.warn(`No secret key (_sk) found in keystore for ${user.appUsername}`);
+        continue;
+      }
+
+      const key = fs.readFileSync(path.join(keyDir, keyFiles[0].name), 'utf8');
 
       const encryptedKey = encrypt(key);
 
@@ -85,7 +67,7 @@ async function sync() {
         [user.appUsername, cert, encryptedKey, user.mspId]
       );
 
-      const passwordHash = await bcrypt.hash('password123', 10);
+      const passwordHash = await bcrypt.hash('password', 10);
 
       await db.none(
         `INSERT INTO users (username, password_hash, role, org_msp)
@@ -97,10 +79,10 @@ async function sync() {
         [user.appUsername, passwordHash, user.role, user.mspId]
       );
 
-      console.log(`Synced identity for ${user.appUsername} using ${user.cryptoUser} (${user.mspId})`);
+      console.log(`Synced identity for ${user.appUsername} (${user.mspId})`);
     }
 
-    console.log('Successfully synced all identities from crypto-config to database.');
+    console.log('Successfully synced all identities from wallet to database.');
   } catch (err) {
     console.error('Error syncing identities:', err);
     process.exit(1);

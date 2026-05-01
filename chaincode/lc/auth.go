@@ -15,11 +15,11 @@ const (
 
 // checkRole verifies if the caller has the required role attribute
 func checkRole(APIstub shim.ChaincodeStubInterface, requiredRole string) (bool, error) {
-	attr, err := cid.GetAttributeValue(APIstub, "role")
+	attr, ok, err := cid.GetAttributeValue(APIstub, "role")
 	if err != nil {
 		return false, fmt.Errorf("failed to retrieve role attribute: %v", err)
 	}
-	if attr == "" {
+	if !ok || attr == "" {
 		return false, fmt.Errorf("no role attribute found for the caller")
 	}
 	if attr != requiredRole {
@@ -30,11 +30,11 @@ func checkRole(APIstub shim.ChaincodeStubInterface, requiredRole string) (bool, 
 
 // checkAttribute verifies if the caller has a specific attribute with a specific value
 func checkAttribute(APIstub shim.ChaincodeStubInterface, attrName string, expectedValue string) (bool, error) {
-	val, err := cid.GetAttributeValue(APIstub, attrName)
+	val, ok, err := cid.GetAttributeValue(APIstub, attrName)
 	if err != nil {
 		return false, fmt.Errorf("failed to retrieve attribute %s: %v", attrName, err)
 	}
-	if val != expectedValue {
+	if !ok || val != expectedValue {
 		return false, nil
 	}
 	return true, nil

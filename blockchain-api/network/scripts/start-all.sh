@@ -105,8 +105,8 @@ rm -f "${SCRIPTS_DIR}/.cc_version"
 log_info "Deploying Letter of Credit chaincode..."
 bash deploy-chaincode.sh
 
-log_info "Setting up API wallet and identities..."
-cd "${ROOT_DIR}/api" && node create-wallet.js
+log_info "Setting up API wallet and identities via CA enrollment..."
+bash "${SCRIPTS_DIR}/enroll-wallet.sh"
 log_info "Synchronizing database identities with network certificates..."
 cd "${ROOT_DIR}/api" && node sync-db-with-crypto.js
 
