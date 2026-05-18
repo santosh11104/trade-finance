@@ -13,9 +13,21 @@ const (
 	RoleOperator = "operator"
 )
 
-// checkRole verifies if the caller has the required role attribute
+// checkRole verifies if the caller has the required role attribute or is a CA administrator
 func checkRole(APIstub shim.ChaincodeStubInterface, requiredRole string) (bool, error) {
 	attr, ok, err := cid.GetAttributeValue(APIstub, "role")
+	if err == nil && ok && attr == requiredRole {
+		return true, nil
+	}
+
+	// If the required role is admin, allow the bootstrap CA Admin to pass
+	if requiredRole == RoleAdmin {
+		id, err := cid.GetID(APIstub)
+		if err == nil && (id == "Admin" || len(id) > 5 && id[:5] == "Admin") {
+			return true, nil
+		}
+	}
+
 	if err != nil {
 		return false, fmt.Errorf("failed to retrieve role attribute: %v", err)
 	}

@@ -12,11 +12,11 @@ USERS=(
   "admin|Org1MSP|admin|7054"
   "importer1|Org1MSP|admin|7054"
   "admin-org2|Org2MSP|admin|8054"
-  "exporter1|Org2MSP|exporter|8054"
+  "exporter1|Org2MSP|operator|8054"
   "admin-org3|Org3MSP|admin|9054"
-  "bank1|Org3MSP|bank|9054"
+  "bank1|Org3MSP|admin|9054"
   "admin-org4|Org4MSP|admin|10054"
-  "bank2|Org4MSP|bank|10054"
+  "bank2|Org4MSP|admin|10054"
 )
 
 # Wait for CA servers to be reachable on the host
@@ -40,6 +40,12 @@ for user_data in "${USERS[@]}"; do
     Org4MSP) ca_host="ca_org4"; registrar_wallet="admin-org4" ;;
   esac
 
+  # Check if user is already enrolled
+  if [ -f "${WALLET_DIR}/${username}/msp/signcerts/cert.pem" ]; then
+    echo "  User ${username} is already enrolled. Skipping registration and enrollment."
+    continue
+  fi
+
   # For bootstrap identities (names starting with admin), the CA identity is always 'admin'
   if [[ "$username" == admin* ]]; then
     ca_user="admin"
@@ -52,6 +58,7 @@ for user_data in "${USERS[@]}"; do
   # 1. Register user (SKIP for bootstrap identities)
   if [[ "$username" != admin* ]]; then
     echo "  Registering ${username} using ${registrar_wallet} as registrar..."
+    TMP_LOG=$(mktemp)
     docker run --rm \
       --network tradefinance \
       -e FABRIC_CA_CLIENT_TLS_SKIP_VERIFY=true \
@@ -62,11 +69,22 @@ for user_data in "${USERS[@]}"; do
         --id.name "${ca_user}" \
         --id.secret "adminpw" \
         --id.type client \
-        --id.affiliation "org1.department1" \
+        --id.affiliation "${msp,,}.department1" \
         --id.attrs "role=${role}" \
         --tls.certfiles /ca-certs/ca.${msp,,}.example.com-cert.pem \
-        -u http://${ca_host}:7054 \
-        --mspdir /wallet/${registrar_wallet}/msp || echo "User ${username} already registered"
+        -u http://admin:adminpw@${ca_host}:${port} 2>&1 | tee "$TMP_LOG"
+
+      REG_STATUS=${PIPESTATUS[0]}
+      if [ $REG_STATUS -ne 0 ]; then
+        if grep -q "already registered" "$TMP_LOG" || grep -q "Enrollment information does not exist" "$TMP_LOG"; then
+          echo "User ${username} already registered or registration skip-able"
+        else
+          echo "Error registering user ${username}: $(cat $TMP_LOG)"
+          rm -f "$TMP_LOG"
+          exit 1
+        fi
+      fi
+      rm -f "$TMP_LOG"
   else
     echo "  Skipping registration for bootstrap identity ${username}..."
   fi
@@ -80,7 +98,7 @@ for user_data in "${USERS[@]}"; do
     -v "${WALLET_DIR}:/wallet" \
     hyperledger/fabric-ca:1.5 \
     fabric-ca-client enroll \
-      -u http://${ca_user}:adminpw@${ca_host}:7054 \
+      -u http://${ca_user}:adminpw@${ca_host}:${port} \
       --tls.certfiles /ca-certs/ca.${msp,,}.example.com-cert.pem \
       --mspdir /wallet/${username}/msp
 done
