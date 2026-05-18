@@ -9,10 +9,10 @@ async function seedDatabaseVerbose() {
   const passwordHash = await bcrypt.hash('password', salt);
 
   const users = [
-    { username: 'importer1', role: 'importer', org: 'Org1MSP' },
-    { username: 'exporter1', role: 'exporter', org: 'Org2MSP' },
-    { username: 'bank1', role: 'bank', org: 'Org3MSP' },
-    { username: 'bank2', role: 'bank', org: 'Org4MSP' },
+    { username: 'importer1', role: 'admin', org: 'Org1MSP' },
+    { username: 'exporter1', role: 'operator', org: 'Org2MSP' },
+    { username: 'bank1', role: 'admin', org: 'Org3MSP' },
+    { username: 'bank2', role: 'admin', org: 'Org4MSP' },
     { username: 'admin', role: 'admin', org: 'Org1MSP' }
   ];
 

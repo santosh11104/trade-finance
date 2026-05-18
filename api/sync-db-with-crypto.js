@@ -10,9 +10,9 @@ const walletPath = path.resolve(__dirname, 'wallet');
 const userMapping = [
   { appUsername: 'admin', mspId: 'Org1MSP', role: 'admin' },
   { appUsername: 'importer1', mspId: 'Org1MSP', role: 'admin' },
-  { appUsername: 'exporter1', mspId: 'Org2MSP', role: 'exporter' },
-  { appUsername: 'bank1', mspId: 'Org3MSP', role: 'bank' },
-  { appUsername: 'bank2', mspId: 'Org4MSP', role: 'bank' },
+  { appUsername: 'exporter1', mspId: 'Org2MSP', role: 'operator' },
+  { appUsername: 'bank1', mspId: 'Org3MSP', role: 'admin' },
+  { appUsername: 'bank2', mspId: 'Org4MSP', role: 'admin' },
 ];
 
 async function sync() {
