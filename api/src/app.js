@@ -163,8 +163,8 @@ app.use((err, req, res, next) => {
 const start = async () => {
   try {
     await initDb();
-    // await caClient.enrollAllAdmins();
-    // await seedDatabase();
+    await caClient.enrollAllAdmins();
+    await seedDatabase();
     await eventListener.startEventListener();
     app.listen(config.port, () => {
       logger.info(`Trade Finance API listening on port ${config.port}`);

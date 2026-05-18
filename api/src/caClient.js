@@ -42,7 +42,7 @@ async function enrollAllAdmins() {
       const ca = await getCAClient(caName);
 
       const identityKey = `admin_${mspId}`;
-      let adminIdentity = await PostgresRepository.getIdentity(identityKey);
+      let adminIdentity = await PostgresRepository.getIdentity(mspId === 'Org1MSP' ? 'admin' : `admin_${mspId}`);
 
       if (!adminIdentity) {
         const enrollment = await ca.enroll({ enrollmentID: adminId, enrollmentSecret: adminPw });
@@ -58,13 +58,13 @@ async function enrollAllAdmins() {
 
         const encryptedKey = encrypt(x509Identity.credentials.privateKey);
         await PostgresRepository.saveIdentity(
-          identityKey,
+          mspId === 'Org1MSP' ? 'admin' : identityKey,
           x509Identity.credentials.certificate,
           encryptedKey,
           x509Identity.mspId
         );
         console.log(`Successfully enrolled admin user "${identityKey}" for ${mspId} and saved it to the database`);
-        adminIdentity = await PostgresRepository.getIdentity(identityKey);
+        adminIdentity = await PostgresRepository.getIdentity(mspId === 'Org1MSP' ? 'admin' : identityKey);
       } else {
         console.log(`An identity for the admin user "${identityKey}" already exists in the database`);
       }
@@ -149,7 +149,7 @@ async function registerAndEnrollUser(username, role, orgMsp = config.fabric.orgM
       return identity;
     }
 
-    const adminIdentityKey = `admin_${orgMsp}`;
+    const adminIdentityKey = orgMsp === 'Org1MSP' ? 'admin' : `admin_${orgMsp}`;
     const adminIdentity = await PostgresRepository.getIdentity(adminIdentityKey);
     if (!adminIdentity) {
       throw new Error(`Admin identity for ${orgMsp} (${adminIdentityKey}) missing. Run enrollAllAdmins first.`);
